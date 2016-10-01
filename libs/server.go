@@ -52,26 +52,41 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 	if err != nil {
 		return
 	}
-	fmt.Printf("request : %s \n",msg)
-	respMsg := new(Message)
-	respMsg.MessageType = BindingSuccessResponse
-	respMsg.TransID = msg.TransID
-	respMsg.Attributes = make(map[uint16][]byte)
 
-	addXORMappedAddress(respMsg, raddr)
-	// addMappedAddress(respMsg, raddr)
+	switch msg.MessageType {
+	case TypeBindingRequest:
+		//fmt.Printf("binding request : %s \n",msg)
 
-	response, err := Marshal(respMsg)
+		//todo : handle with origin
 
-	fmt.Printf("response : %s \n",response)
 
-	if err != nil {
-		fmt.Println(err)
-		return
+		respMsg := new(Message)
+		respMsg.MessageType = TypeBindingResponse
+		respMsg.TransID = msg.TransID
+		respMsg.Attributes = make(map[uint16][]byte)
+
+		addXORMappedAddress(respMsg, raddr)
+		// addMappedAddress(respMsg, raddr)
+
+
+		//fmt.Printf("binding response : %s \n",respMsg)
+
+		response, err := Marshal(respMsg)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		//send response
+		_, err = s.connection.WriteToUDP(response, raddr)
+		if err != nil {
+			fmt.Println(err)
+		}
+	case TypeAllocate:
+		fmt.Printf("allocate request : %s \n",msg)
+
+		//fmt.Printf("binding response : %s \n",respMsg)
+
 	}
-	//send response
-	_, err = s.connection.WriteToUDP(response, raddr)
-	if err != nil {
-		fmt.Println(err)
-	}
+
+
 }

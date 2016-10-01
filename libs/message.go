@@ -5,39 +5,13 @@ import (
 	"errors"
 	"net"
 	"math/big"
-)
-
-//StunMagic is the constant we expect from all STUN responses/requests in the Magic field
-const StunMagic = 0x2112A442
-
-//BindingX is the byte indicator of the STUN message type
-const (
-	BindingRequest         = 0x0001
-	BindingSuccessResponse = 0x0101
-)
-
-//AttributeX is the byte indicator of the STUN attribute type
-const (
-	AttributeReserved         = 0x0000
-	AttributeMappedAddress    = 0x0001
-	AttributeResponseAddress  = 0x0002
-	AttributeChangeAddress    = 0x0003
-	AttributeSourceAddress    = 0x0004
-	AttributeChangedAddress   = 0x0005
-	AttributeUsername         = 0x0006
-	AttributePassword         = 0x0007
-	AttributeMessageIntegrity = 0x0008
-	AttributeErrorCode        = 0x0009
-	AttributeUnknown          = 0x000A
-	AttributeReflectedFrom    = 0x000B
-	AttributeRealm            = 0x0014
-	AttributeNonce            = 0x0015
-	AttributeXORMappedAddress = 0x0020
+	"fmt"
 )
 
 //ErrX are the errors to be expected during message handling
 var (
 	ErrInvalidRequest = errors.New("Invalid STUN request")
+	ErrRFC3489 = errors.New("no magic cookie , RFC3489")
 )
 
 //Message holds the information about a STUN Message
@@ -55,14 +29,22 @@ func UnMarshal(data []byte) (*Message, error) {
 		return nil, ErrInvalidRequest
 	}
 
+	pkgType := binary.BigEndian.Uint16(data[0:2])
+	// check 00
+	if pkgType >  (1 << 15 - 1 ) {
+		return nil, ErrInvalidRequest
+	}
+
+	//check magic cookie
+	magicCookieCheck := binary.BigEndian.Uint32(data[4:8]);
+	if(magicCookie != magicCookieCheck){
+		return nil, ErrRFC3489
+	}
+
 	msg := new(Message)
 
 	//parse the header
-	msg.MessageType = binary.BigEndian.Uint16(data[0:2])
-	//check to make sure this is a binding request
-	if msg.MessageType != BindingRequest {
-		return nil, ErrInvalidRequest
-	}
+	msg.MessageType = pkgType
 	msg.MessageLength = binary.BigEndian.Uint16(data[2:4])
 
 
@@ -94,7 +76,7 @@ func UnMarshal(data []byte) (*Message, error) {
 
 //Marshal transforms a message into a byte array
 func Marshal(m *Message) ([]byte, error) {
-	result := make([]byte, 576)
+	result := make([]byte, 36)
 	//first do the header
 	binary.BigEndian.PutUint16(result[:2], m.MessageType)
 	result = append(result[:4], m.TransID.Bytes()...)
@@ -114,6 +96,8 @@ func Marshal(m *Message) ([]byte, error) {
 				i += 4 - pad
 			}
 		}
+
+		//add length
 		binary.BigEndian.PutUint16(result[2:4], uint16(i-20))
 	}
 	return result, nil
@@ -123,16 +107,16 @@ func addMappedAddress(m *Message, raddr *net.UDPAddr) {
 	port := make([]byte, 2)
 	binary.BigEndian.PutUint16(port, uint16(raddr.Port))
 	addr := raddr.IP.To4()
-	m.Attributes[AttributeMappedAddress] = append([]byte{0, 1}, append(port, addr...)...)
+	m.Attributes[AttributeMappedAddress] = append([]byte{0, attributeFamilyIPv4}, append(port, addr...)...)
 }
 
 func addXORMappedAddress(m *Message, raddr *net.UDPAddr) {
 
-	addr := raddr.IP.To4()
-	//addr := net.ParseIP("11.11.11.11").To4()
+	//addr := raddr.IP.To4()
+	addr := net.ParseIP("11.11.11.11").To4()
 	port := uint16(raddr.Port)
 	xbytes := xorAddress(port, addr)
-	m.Attributes[AttributeXORMappedAddress] = append([]byte{0, 1}, xbytes...)
+	m.Attributes[AttributeXorMappedAddress] = append([]byte{0, attributeFamilyIPv4}, xbytes...)
 
 }
 
@@ -140,8 +124,132 @@ func xorAddress(port uint16, addr []byte) []byte {
 
 	xport := make([]byte, 2)
 	xaddr := make([]byte, 4)
-	binary.BigEndian.PutUint16(xport, port^uint16(StunMagic>>16))
-	binary.BigEndian.PutUint32(xaddr, binary.BigEndian.Uint32(addr)^StunMagic)
+	binary.BigEndian.PutUint16(xport, port^uint16(magicCookie>>16))
+	binary.BigEndian.PutUint32(xaddr, binary.BigEndian.Uint32(addr)^magicCookie)
 	return append(xport, xaddr...)
 
+}
+
+func (m Message) TypeToString() (typeString string)  {
+	switch m.MessageType {
+	case TypeBindingRequest:
+		typeString = "BindRequest"
+	case TypeAllocate:
+		typeString = "Allocate"
+	case TypeBindingResponse:
+		typeString = "BindingResponse"
+
+	}
+	return
+}
+
+func (m Message) String() string {
+	attrString:= ""
+	if len(m.Attributes) > 0 {
+		attrString = "\n attributes : \n"
+
+		for k,v := range m.Attributes {
+			attrString += fmt.Sprintf(`	attr: type -> %s , length -> %d , value -> %s`,
+				attrTypeToString(k), len(v), v)
+		}
+	}
+
+	return fmt.Sprintf(`packet : type -> %s , length -> %d , tid -> %d , length of the attr -> %d	%s
+			 `,
+		m.TypeToString(),m.MessageLength,m.TransID,len(m.Attributes),attrString)
+}
+
+func attrTypeToString(attrType uint16) (typeString string)  {
+	switch attrType {
+	case AttributeMappedAddress:
+		typeString = "MappedAddress"
+	case AttributeResponseAddress:
+		typeString = "ResponseAddress"
+	case AttributeChangeRequest:
+		typeString = "ChangeRequest"
+	case AttributeSourceAddress:
+		typeString = "SourceAddress"
+	case AttributeChangedAddress:
+		typeString = "ChangedAddress"
+	case  AttributeUsername:
+		typeString = "Username"
+	case  AttributePassword:
+		typeString = "Password"
+	case AttributeMessageIntegrity:
+		typeString = "MessageIntegrity"
+	case AttributeErrorCode:
+		typeString = "ErrorCode"
+	case AttributeUnknownAttributes:
+		typeString = "UnknownAttributes"
+	case AttributeReflectedFrom:
+		typeString = "ReflectedFrom"
+	case AttributeChannelNumber:
+		typeString = "ChannelNumber"
+	case AttributeLifetime:
+		typeString = "Lifetime"
+	case AttributeBandwidth:
+		typeString = "Bandwidth"
+	case AttributeXorPeerAddress:
+		typeString = "XorPeerAddress"
+	case AttributeData:
+		typeString = "Data"
+	case AttributeRealm:
+		typeString = "Realm"
+	case AttributeNonce:
+		typeString = "Nonce"
+	case AttributeXorRelayedAddress:
+		typeString = "XorRelayedAddress"
+	case AttributeRequestedAddressFamily:
+		typeString = "RequestedAddressFamily"
+	case AttributeEvenPort:
+		typeString = "EvenPort"
+	case AttributeRequestedTransport:
+		typeString = "RequestedTransport"
+	case AttributeDontFragment:
+		typeString = "DontFragment"
+	case AttributeXorMappedAddress:
+		typeString = "XorMappedAddress"
+	case AttributeTimerVal:
+		typeString = "TimerVal"
+	case AttributeReservationToken:
+		typeString = "ReservationToken"
+	case AttributePriority:
+		typeString = "Priority"
+	case AttributeUseCandidate:
+		typeString = "UseCandidate"
+	case AttributePadding:
+		typeString = "Padding"
+	case AttributeResponsePort:
+		typeString = "ResponsePort"
+	case AttributeConnectionID:
+		typeString = "ConnectionID"
+	case AttributeXorMappedAddressExp:
+		typeString = "XorMappedAddressExp"
+	case AttributeSoftware:
+		typeString = "Software"
+	case AttributeAlternateServer:
+		typeString = "AlternateServer"
+	case AttributeCacheTimeout:
+		typeString = "CacheTimeout"
+	case AttributeFingerprint:
+		typeString = "Fingerprint"
+	case AttributeIceControlled:
+		typeString = "IceControlled"
+	case AttributeIceControlling:
+		typeString = "IceControlling"
+	case AttributeResponseOrigin:
+		typeString = "ResponseOrigin"
+	case AttributeOtherAddress:
+		typeString = "OtherAddress"
+	case AttributeEcnCheckStun:
+		typeString = "EcnCheckStun"
+	case AttributeCiscoFlowdata:
+		typeString = "CiscoFlowdata"
+	case AttributeOrigin:
+		typeString = "Origin"
+	default:
+		typeString = "fuck??"
+	}
+
+	return
 }

@@ -1,4 +1,4 @@
-package gostun
+package libs
 
 //Client is the main struct that hold the Client info for P2P tx
 type Client struct {

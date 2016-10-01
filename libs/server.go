@@ -1,4 +1,4 @@
-package gostun
+package libs
 
 import (
 	"fmt"
@@ -52,6 +52,7 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 	if err != nil {
 		return
 	}
+	fmt.Printf("request : %s \n",msg)
 	respMsg := new(Message)
 	respMsg.MessageType = BindingSuccessResponse
 	respMsg.Magic = StunMagic
@@ -62,6 +63,9 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 	// addMappedAddress(respMsg, raddr)
 
 	response, err := Marshal(respMsg)
+
+	fmt.Printf("response : %s \n",response)
+
 	if err != nil {
 		fmt.Println(err)
 		return

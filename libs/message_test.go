@@ -1,4 +1,4 @@
-package gostun
+package libs
 
 import "testing"
 

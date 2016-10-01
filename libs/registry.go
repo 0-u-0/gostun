@@ -1,4 +1,4 @@
-package gostun
+package libs
 
 //Registry maintains the mappings required for P2P transmission
 type Registry struct {

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
+	"math/big"
 )
 
 //StunMagic is the constant we expect from all STUN responses/requests in the Magic field
@@ -43,8 +44,7 @@ var (
 type Message struct {
 	MessageType   uint16
 	MessageLength uint16
-	Magic         uint32
-	TID           []byte
+	TransID       *big.Int
 	Attributes    map[uint16][]byte
 }
 
@@ -64,13 +64,11 @@ func UnMarshal(data []byte) (*Message, error) {
 		return nil, ErrInvalidRequest
 	}
 	msg.MessageLength = binary.BigEndian.Uint16(data[2:4])
-	msg.Magic = binary.BigEndian.Uint32(data[4:8])
-	//error on invalid Magic number
-	if msg.Magic != StunMagic {
-		return nil, ErrInvalidRequest
-	}
 
-	msg.TID = data[8:20]
+
+	tid := new(big.Int)
+	tid.SetBytes(data[4:20])
+	msg.TransID = tid
 
 	//if we have leftover data, parse as attributes
 	if length > 20 {
@@ -99,8 +97,7 @@ func Marshal(m *Message) ([]byte, error) {
 	result := make([]byte, 576)
 	//first do the header
 	binary.BigEndian.PutUint16(result[:2], m.MessageType)
-	binary.BigEndian.PutUint32(result[4:8], m.Magic)
-	result = append(result[:8], m.TID...)
+	result = append(result[:4], m.TransID.Bytes()...)
 
 	//now we do the attributes
 	if m.Attributes != nil {
@@ -131,8 +128,8 @@ func addMappedAddress(m *Message, raddr *net.UDPAddr) {
 
 func addXORMappedAddress(m *Message, raddr *net.UDPAddr) {
 
-	//addr := raddr.IP.To4()
-	addr := net.ParseIP("11.11.11.11").To4()
+	addr := raddr.IP.To4()
+	//addr := net.ParseIP("11.11.11.11").To4()
 	port := uint16(raddr.Port)
 	xbytes := xorAddress(port, addr)
 	m.Attributes[AttributeXORMappedAddress] = append([]byte{0, 1}, xbytes...)

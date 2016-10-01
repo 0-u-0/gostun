@@ -55,8 +55,7 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 	fmt.Printf("request : %s \n",msg)
 	respMsg := new(Message)
 	respMsg.MessageType = BindingSuccessResponse
-	respMsg.Magic = StunMagic
-	respMsg.TID = msg.TID
+	respMsg.TransID = msg.TransID
 	respMsg.Attributes = make(map[uint16][]byte)
 
 	addXORMappedAddress(respMsg, raddr)

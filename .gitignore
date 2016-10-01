@@ -2,3 +2,4 @@
 /tests
 #ignore .out files
 *.out
+.idea/

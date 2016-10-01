@@ -131,7 +131,8 @@ func addMappedAddress(m *Message, raddr *net.UDPAddr) {
 
 func addXORMappedAddress(m *Message, raddr *net.UDPAddr) {
 
-	addr := raddr.IP.To4()
+	//addr := raddr.IP.To4()
+	addr := net.UDPAddr{IP:[]byte("11.11.11.11")}.IP.To4()
 	port := uint16(raddr.Port)
 	xbytes := xorAddress(port, addr)
 	m.Attributes[AttributeXORMappedAddress] = append([]byte{0, 1}, xbytes...)

@@ -35,7 +35,7 @@ func (s *Server) Serve() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go s.serve()
+	s.serve()
 }
 
 //NewServer conveniently creates a new server from the given port

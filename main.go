@@ -5,6 +5,10 @@ import (
 )
 
 func main() {
+
+	relay := libs.RelayServer{Port:33333}
+	relay.Serve()
+
 	server := libs.Server{Port:3478}
 	server.Serve()
 

@@ -3,7 +3,6 @@ package libs
 import (
 	"encoding/binary"
 	"errors"
-	"net"
 	"math/big"
 	"fmt"
 )
@@ -19,7 +18,7 @@ type Message struct {
 	MessageType   uint16
 	MessageLength uint16
 	TransID       *big.Int
-	Attributes    map[uint16][]byte
+	Attributes    []*Attribute
 }
 
 //UnMarshal creates a Message object from data received by the STUN server
@@ -54,13 +53,15 @@ func UnMarshal(data []byte) (*Message, error) {
 
 	//if we have leftover data, parse as attributes
 	if length > 20 {
-		msg.Attributes = make(map[uint16][]byte)
+		msg.Attributes = make([]*Attribute,0)
 		i := 20
 		for i < length {
 			attrType := binary.BigEndian.Uint16(data[i : i+2])
 			attrLength := binary.BigEndian.Uint16(data[i+2 : i+4])
 			i += 4 + int(attrLength)
-			msg.Attributes[attrType] = data[i-int(attrLength) : i]
+
+			msg.Attributes = append(msg.Attributes,newAttr(attrType,data[i-int(attrLength) : i]))
+
 			if pad := int(attrLength) % 4; pad > 0 {
 				i += 4 - pad
 			}
@@ -76,7 +77,7 @@ func UnMarshal(data []byte) (*Message, error) {
 
 //Marshal transforms a message into a byte array
 func Marshal(m *Message) ([]byte, error) {
-	result := make([]byte, 36)
+	result := make([]byte, 60)
 	//first do the header
 	binary.BigEndian.PutUint16(result[:2], m.MessageType)
 	result = append(result[:4], m.TransID.Bytes()...)
@@ -84,14 +85,13 @@ func Marshal(m *Message) ([]byte, error) {
 	//now we do the attributes
 	if m.Attributes != nil {
 		i := 20
-		for t, v := range m.Attributes {
-			length := len(v)
-			binary.BigEndian.PutUint16(result[i:i+2], t)
-			binary.BigEndian.PutUint16(result[i+2:i+4], uint16(len(v)))
-			result = append(result[:i+4], v...)
-			i += 4 + length
+		for _ , attr := range m.Attributes {
+			binary.BigEndian.PutUint16(result[i:i+2], attr.AttrType)
+			binary.BigEndian.PutUint16(result[i+2:i+4], attr.Length)
+			result = append(result[:i+4], attr.Value...)
+			i += 4 + int(attr.Length)
 			//if we need to pad, do so
-			if pad := length % 4; pad > 0 {
+			if pad := int(attr.Length % 4); pad > 0 {
 				result = append(result, make([]byte, 4-pad)...)
 				i += 4 - pad
 			}
@@ -103,32 +103,24 @@ func Marshal(m *Message) ([]byte, error) {
 	return result, nil
 }
 
-func addMappedAddress(m *Message, raddr *net.UDPAddr) {
-	port := make([]byte, 2)
-	binary.BigEndian.PutUint16(port, uint16(raddr.Port))
-	addr := raddr.IP.To4()
-	m.Attributes[AttributeMappedAddress] = append([]byte{0, attributeFamilyIPv4}, append(port, addr...)...)
+func (m Message) hasAttribute(attrType uint16) bool  {
+	for _, a := range m.Attributes {
+		if a.AttrType == attrType {
+			return true
+		}
+	}
+	return false
 }
 
-func addXORMappedAddress(m *Message, raddr *net.UDPAddr) {
-
-	//addr := raddr.IP.To4()
-	addr := net.ParseIP("11.11.11.11").To4()
-	port := uint16(raddr.Port)
-	xbytes := xorAddress(port, addr)
-	m.Attributes[AttributeXorMappedAddress] = append([]byte{0, attributeFamilyIPv4}, xbytes...)
-
+func (m Message) getAttribute(attrType uint16) *Attribute  {
+	for _, a := range m.Attributes {
+		if a.AttrType == attrType {
+			return a
+		}
+	}
+	return nil
 }
 
-func xorAddress(port uint16, addr []byte) []byte {
-
-	xport := make([]byte, 2)
-	xaddr := make([]byte, 4)
-	binary.BigEndian.PutUint16(xport, port^uint16(magicCookie>>16))
-	binary.BigEndian.PutUint32(xaddr, binary.BigEndian.Uint32(addr)^magicCookie)
-	return append(xport, xaddr...)
-
-}
 
 func (m Message) TypeToString() (typeString string)  {
 	switch m.MessageType {
@@ -138,19 +130,22 @@ func (m Message) TypeToString() (typeString string)  {
 		typeString = "Allocate"
 	case TypeBindingResponse:
 		typeString = "BindingResponse"
-
+	case TypeAllocateErrorResponse:
+		typeString = "AllocateErrorResponse"
+	case TypeAllocateResponse:
+		typeString = "AllocateResponse"
 	}
 	return
 }
 
 func (m Message) String() string {
-	attrString:= ""
-	if len(m.Attributes) > 0 {
-		attrString = "\n attributes : \n"
 
-		for k,v := range m.Attributes {
-			attrString += fmt.Sprintf(`	attr: type -> %s , length -> %d , value -> %s`,
-				attrTypeToString(k), len(v), v)
+	attrString := ""
+	if len(m.Attributes) > 0{
+		attrString = "\n Attributes : \n"
+
+		for _ , attr := range m.Attributes{
+			attrString += attr.String()
 		}
 	}
 

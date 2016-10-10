@@ -51,7 +51,7 @@ func (s *RelayServer) handleData(raddr *net.UDPAddr, data []byte) {
 		return
 	}
 
-	fmt.Printf("request : %s \n",msg)
+	fmt.Printf("ffffff request : %s \n",msg)
 
 }
 

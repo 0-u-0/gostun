@@ -114,6 +114,8 @@ func Marshal(m *Message) ([]byte, error) {
 	return result, nil
 }
 
+
+
 func (m Message) hasAttribute(attrType uint16) bool  {
 	for _, a := range m.Attributes {
 		if a.AttrType == attrType {
@@ -132,6 +134,14 @@ func (m Message) getAttribute(attrType uint16) *Attribute  {
 	return nil
 }
 
+
+//fixme : not change length
+func (m *Message)updateAttribute(attrType uint16, value []byte)  {
+	attr := m.getAttribute(AttributeMessageIntegrity)
+	if attr != nil {
+		attr.Value = value
+	}
+}
 
 func (m Message) TypeToString() (typeString string)  {
 	switch m.MessageType {

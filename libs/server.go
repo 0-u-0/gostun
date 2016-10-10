@@ -50,6 +50,7 @@ func NewServer(port int) *Server {
 func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 	msg, err := UnMarshal(data)
 	if err != nil {
+		fmt.Println(err)
 		return
 	}
 
@@ -86,29 +87,6 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 
 		if ok {
 
-			fakeMsg := new(Message)
-			fakeMsg.MessageType = TypeAllocateResponse
-			fakeMsg.TransID = msg.TransID
-			fakeMsg.Attributes = make([]*Attribute,0)
-
-			fakeMsg.addAttribute(newAttrXORRelayedAddress())
-			fakeMsg.addAttribute(newAttrXORMappedAddress(raddr))
-			fakeMsg.addAttribute(newAttrLifetime())
-			fakeMsg.addAttribute(newAttrSoftware())
-			//fakeMsg.addAttribute(newAttrFakeMessageIntegrity())
-			fakeMsg.MessageLength += 24
-
-			fmt.Printf("fake response : %s \n",fakeMsg)
-
-
-			fakeResponse, err := Marshal(fakeMsg)
-
-			//fmt.Printf("fake length : %d \n", binary.BigEndian.Uint16(fakeResponse[2:4]))
-
-			key := generateKey("user","pass","realm")
-			hmacValue := messageIntegrityHmac(fakeResponse,key)
-
-
 			respMsg := new(Message)
 			respMsg.MessageType = TypeAllocateResponse
 			respMsg.TransID = msg.TransID
@@ -118,21 +96,24 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 			respMsg.addAttribute(newAttrXORMappedAddress(raddr))
 			respMsg.addAttribute(newAttrLifetime())
 			respMsg.addAttribute(newAttrSoftware())
-			respMsg.addAttribute(newAttrMessageIntegrity (hmacValue))
+			respMsg.addAttribute(newAttrDummyMessageIntegrity())
 
-			/*
-			 Transaction-Id=0xC271E932AD7446A32C234492     |             |
-		|    SOFTWARE="Example server, version 1.17"       |             |
-		|    LIFETIME=1200 (20 minutes)      |             |             |
-		|    XOR-RELAYED-ADDRESS=192.0.2.15:50000          |             |
-		|    XOR-MAPPED-ADDRESS=192.0.2.1:7000             |             |
-        |    MESSAGE-INTEGRITY=...
-			*/
-			fmt.Printf("allocate response : %s \n",respMsg)
+			fmt.Printf("m-i response : %s \n",respMsg)
 
-			response, err := Marshal(respMsg)
 
-			//fmt.Printf("real length : %d \n", binary.BigEndian.Uint16(response[2:4]))
+			mi, err := Marshal(respMsg)
+
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			//fmt.Printf("fake length : %d \n", binary.BigEndian.Uint16(mi[2:4]))
+
+			key := generateKey("user","pass","realm")
+			hmacValue := messageIntegrityHmac(mi[:len(mi)-24],key)
+
+
+			response := append(mi[:len(mi)-20],hmacValue...)
 
 			if err != nil {
 				fmt.Println(err)

@@ -63,8 +63,8 @@ func newAttrMappedAddress(remoteAddress *net.UDPAddr) *Attribute  {
 
 func newAttrXORMappedAddress(remoteAddress *net.UDPAddr) *Attribute  {
 	port := uint16(remoteAddress.Port)
-	//reflexiveAddress := remoteAddress.IP.To4()
-	reflexiveAddress := net.ParseIP("11.11.11.11").To4()
+	reflexiveAddress := remoteAddress.IP.To4()
+	//reflexiveAddress := net.ParseIP("11.11.11.11").To4()
 	xorBytes := xorAddress(port, reflexiveAddress)
 
 	value := append([]byte{0, attributeFamilyIPv4}, xorBytes...)
@@ -104,7 +104,7 @@ func newAttrSoftware() *Attribute{
 
 func newAttrLifetime() *Attribute {
 	time := make([]byte,4)
-	binary.BigEndian.PutUint32(time,1200)
+	binary.BigEndian.PutUint32(time,600)
 	return newAttr(AttributeLifetime, time)
 }
 
@@ -113,7 +113,7 @@ func newAttrMessageIntegrity(value []byte) *Attribute {
 		AttributeMessageIntegrity,value)
 }
 
-func newAttrFakeMessageIntegrity() *Attribute {
+func newAttrDummyMessageIntegrity() *Attribute {
 	return newAttrNoValue(
 		AttributeMessageIntegrity)
 }

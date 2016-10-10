@@ -91,10 +91,10 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 			fakeMsg.TransID = msg.TransID
 			fakeMsg.Attributes = make([]*Attribute,0)
 
-			fakeMsg.addAttribute(newAttrSoftware())
 			fakeMsg.addAttribute(newAttrXORRelayedAddress())
 			fakeMsg.addAttribute(newAttrXORMappedAddress(raddr))
 			fakeMsg.addAttribute(newAttrLifetime())
+			fakeMsg.addAttribute(newAttrSoftware())
 			//fakeMsg.addAttribute(newAttrFakeMessageIntegrity())
 			fakeMsg.MessageLength += 24
 

@@ -21,6 +21,17 @@ type Message struct {
 	Attributes    []*Attribute
 }
 
+
+func (m *Message) addAttribute(a *Attribute) {
+	m.Attributes = append(m.Attributes, a)
+	m.MessageLength += align(a.Length) + 4
+}
+
+func (m *Message) addAttributeNoLength(a *Attribute) {
+	m.Attributes = append(m.Attributes, a)
+}
+
+
 //UnMarshal creates a Message object from data received by the STUN server
 func UnMarshal(data []byte) (*Message, error) {
 	length := len(data)
@@ -77,7 +88,7 @@ func UnMarshal(data []byte) (*Message, error) {
 
 //Marshal transforms a message into a byte array
 func Marshal(m *Message) ([]byte, error) {
-	result := make([]byte, 60)
+	result := make([]byte, 1024)
 	//first do the header
 	binary.BigEndian.PutUint16(result[:2], m.MessageType)
 	result = append(result[:4], m.TransID.Bytes()...)
@@ -152,99 +163,4 @@ func (m Message) String() string {
 	return fmt.Sprintf(`packet : type -> %s , length -> %d , tid -> %d , length of the attr -> %d	%s
 			 `,
 		m.TypeToString(),m.MessageLength,m.TransID,len(m.Attributes),attrString)
-}
-
-func attrTypeToString(attrType uint16) (typeString string)  {
-	switch attrType {
-	case AttributeMappedAddress:
-		typeString = "MappedAddress"
-	case AttributeResponseAddress:
-		typeString = "ResponseAddress"
-	case AttributeChangeRequest:
-		typeString = "ChangeRequest"
-	case AttributeSourceAddress:
-		typeString = "SourceAddress"
-	case AttributeChangedAddress:
-		typeString = "ChangedAddress"
-	case  AttributeUsername:
-		typeString = "Username"
-	case  AttributePassword:
-		typeString = "Password"
-	case AttributeMessageIntegrity:
-		typeString = "MessageIntegrity"
-	case AttributeErrorCode:
-		typeString = "ErrorCode"
-	case AttributeUnknownAttributes:
-		typeString = "UnknownAttributes"
-	case AttributeReflectedFrom:
-		typeString = "ReflectedFrom"
-	case AttributeChannelNumber:
-		typeString = "ChannelNumber"
-	case AttributeLifetime:
-		typeString = "Lifetime"
-	case AttributeBandwidth:
-		typeString = "Bandwidth"
-	case AttributeXorPeerAddress:
-		typeString = "XorPeerAddress"
-	case AttributeData:
-		typeString = "Data"
-	case AttributeRealm:
-		typeString = "Realm"
-	case AttributeNonce:
-		typeString = "Nonce"
-	case AttributeXorRelayedAddress:
-		typeString = "XorRelayedAddress"
-	case AttributeRequestedAddressFamily:
-		typeString = "RequestedAddressFamily"
-	case AttributeEvenPort:
-		typeString = "EvenPort"
-	case AttributeRequestedTransport:
-		typeString = "RequestedTransport"
-	case AttributeDontFragment:
-		typeString = "DontFragment"
-	case AttributeXorMappedAddress:
-		typeString = "XorMappedAddress"
-	case AttributeTimerVal:
-		typeString = "TimerVal"
-	case AttributeReservationToken:
-		typeString = "ReservationToken"
-	case AttributePriority:
-		typeString = "Priority"
-	case AttributeUseCandidate:
-		typeString = "UseCandidate"
-	case AttributePadding:
-		typeString = "Padding"
-	case AttributeResponsePort:
-		typeString = "ResponsePort"
-	case AttributeConnectionID:
-		typeString = "ConnectionID"
-	case AttributeXorMappedAddressExp:
-		typeString = "XorMappedAddressExp"
-	case AttributeSoftware:
-		typeString = "Software"
-	case AttributeAlternateServer:
-		typeString = "AlternateServer"
-	case AttributeCacheTimeout:
-		typeString = "CacheTimeout"
-	case AttributeFingerprint:
-		typeString = "Fingerprint"
-	case AttributeIceControlled:
-		typeString = "IceControlled"
-	case AttributeIceControlling:
-		typeString = "IceControlling"
-	case AttributeResponseOrigin:
-		typeString = "ResponseOrigin"
-	case AttributeOtherAddress:
-		typeString = "OtherAddress"
-	case AttributeEcnCheckStun:
-		typeString = "EcnCheckStun"
-	case AttributeCiscoFlowdata:
-		typeString = "CiscoFlowdata"
-	case AttributeOrigin:
-		typeString = "Origin"
-	default:
-		typeString = "fuck??"
-	}
-
-	return
 }

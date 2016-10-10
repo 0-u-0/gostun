@@ -4,6 +4,9 @@ import (
 	"net"
 	"encoding/binary"
 	"fmt"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/hmac"
 )
 
 type Attribute struct{
@@ -23,12 +26,31 @@ func xorAddress(port uint16, addr []byte) []byte {
 
 }
 
+func padding(bytes []byte) []byte {
+	length := uint16(len(bytes))
+	return append(bytes, make([]byte, align(length)-length)...)
+}
+
+// Align the uint16 number to the smallest multiple of 4, which is larger than
+// or equal to the uint16 number.
+func align(n uint16) uint16 {
+	return (n + 3) & 0xfffc
+}
+
 func newAttr(attrType uint16,value []byte) *Attribute {
-	return &Attribute{
-		AttrType:attrType,
-		Length: uint16(len(value)),
-		Value:value,
-	}
+	att := new(Attribute)
+	att.AttrType = attrType
+	att.Value = padding(value)
+	att.Length = uint16(len(att.Value))
+	return att
+}
+
+func newAttrNoValue(attrType uint16) *Attribute {
+	att := new(Attribute)
+	att.AttrType = attrType
+	att.Value = make([]byte,20)
+	att.Length = uint16(len(att.Value))
+	return att
 }
 
 func newAttrMappedAddress(remoteAddress *net.UDPAddr) *Attribute  {
@@ -54,7 +76,7 @@ func newAttrNonce() *Attribute{
 }
 
 func newAttrRealm() *Attribute{
-	return newAttr(AttributeRealm,[]byte("test.com"))
+	return newAttr(AttributeRealm,[]byte("realm"))
 }
 
 func newAttrError401() *Attribute{
@@ -69,7 +91,7 @@ func newAttrError401() *Attribute{
 }
 
 func newAttrXORRelayedAddress() *Attribute{
-	relayedAddress := net.ParseIP("22.22.22.22").To4()
+	relayedAddress := net.ParseIP("139.198.0.26").To4()
 	port := uint16(33333)
 	xorBytes := xorAddress(port, relayedAddress)
 	value := append([]byte{0, attributeFamilyIPv4}, xorBytes...)
@@ -81,11 +103,39 @@ func newAttrSoftware() *Attribute{
 }
 
 func newAttrLifetime() *Attribute {
-	return newAttr(AttributeLifetime, []byte("1200"))
+	time := make([]byte,4)
+	binary.BigEndian.PutUint32(time,1200)
+	return newAttr(AttributeLifetime, time)
 }
 
-func (a Attribute) TypeToString() (typeString string)  {
-	switch a.AttrType {
+func newAttrMessageIntegrity(value []byte) *Attribute {
+	return newAttr(
+		AttributeMessageIntegrity,value)
+}
+
+func newAttrFakeMessageIntegrity() *Attribute {
+	return newAttrNoValue(
+		AttributeMessageIntegrity)
+}
+
+// message-integrity
+func generateKey(username,password,realm string) []byte  {
+	hasher := md5.New()
+	hasher.Write([]byte(fmt.Sprintf("%s:%s:%s",username,realm,password)))
+	key := hasher.Sum(nil)
+	return key
+}
+
+func messageIntegrityHmac(value,key []byte) []byte {
+	mac := hmac.New(sha1.New,key)
+	mac.Write(value)
+	return mac.Sum(nil)
+}
+
+
+
+func  AttrTypeToString(attrType uint16) (typeString string)  {
+	switch attrType {
 	case AttributeMappedAddress:
 		typeString = "MappedAddress"
 	case AttributeResponseAddress:
@@ -183,10 +233,13 @@ func (a Attribute) String() string {
 	switch a.AttrType {
 	case AttributeRequestedTransport:
 		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %d \n",
-			a.TypeToString(), a.Length,  uint8(a.Value[0]) )
+			AttrTypeToString(a.AttrType), a.Length,  uint8(a.Value[0]) )
+	case AttributeLifetime:
+		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %d \n",
+			AttrTypeToString(a.AttrType), a.Length,  binary.BigEndian.Uint32(a.Value) )
 	default:
 		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %s \n",
-			a.TypeToString(), a.Length, a.Value)
+			AttrTypeToString(a.AttrType), a.Length, a.Value)
 	}
 
 	return attrString

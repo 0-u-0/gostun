@@ -63,7 +63,7 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 		respMsg.TransID = msg.TransID
 		respMsg.Attributes = make([]*Attribute,0)
 
-		respMsg.Attributes = append(respMsg.Attributes,newAttrXORMappedAddress(raddr))
+		respMsg.addAttribute(newAttrXORMappedAddress(raddr))
 		// addMappedAddress(respMsg, raddr)
 
 
@@ -80,31 +80,60 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 			fmt.Println(err)
 		}
 	case TypeAllocate:
-		fmt.Printf("allocate request : %s \n",msg)
+		//fmt.Printf("allocate request : %s \n",msg)
 
 		ok := msg.hasAttribute(AttributeRealm)
 
 		if ok {
+
+			fakeMsg := new(Message)
+			fakeMsg.MessageType = TypeAllocateResponse
+			fakeMsg.TransID = msg.TransID
+			fakeMsg.Attributes = make([]*Attribute,0)
+
+			fakeMsg.addAttribute(newAttrSoftware())
+			fakeMsg.addAttribute(newAttrXORRelayedAddress())
+			fakeMsg.addAttribute(newAttrXORMappedAddress(raddr))
+			fakeMsg.addAttribute(newAttrLifetime())
+			//fakeMsg.addAttribute(newAttrFakeMessageIntegrity())
+			fakeMsg.MessageLength += 24
+
+			fmt.Printf("fake response : %s \n",fakeMsg)
+
+
+			fakeResponse, err := Marshal(fakeMsg)
+
+			//fmt.Printf("fake length : %d \n", binary.BigEndian.Uint16(fakeResponse[2:4]))
+
+			key := generateKey("user","pass","realm")
+			hmacValue := messageIntegrityHmac(fakeResponse,key)
+
+
 			respMsg := new(Message)
 			respMsg.MessageType = TypeAllocateResponse
 			respMsg.TransID = msg.TransID
 			respMsg.Attributes = make([]*Attribute,0)
 
-			respMsg.Attributes = append(
-				respMsg.Attributes,msg.getAttribute (AttributeMessageIntegrity),
-				newAttrSoftware(),newAttrXORRelayedAddress(),newAttrXORMappedAddress(raddr),
-				newAttrLifetime(),)
+			respMsg.addAttribute(newAttrXORRelayedAddress())
+			respMsg.addAttribute(newAttrXORMappedAddress(raddr))
+			respMsg.addAttribute(newAttrLifetime())
+			respMsg.addAttribute(newAttrSoftware())
+			respMsg.addAttribute(newAttrMessageIntegrity (hmacValue))
+
 			/*
 			 Transaction-Id=0xC271E932AD7446A32C234492     |             |
 		|    SOFTWARE="Example server, version 1.17"       |             |
 		|    LIFETIME=1200 (20 minutes)      |             |             |
 		|    XOR-RELAYED-ADDRESS=192.0.2.15:50000          |             |
 		|    XOR-MAPPED-ADDRESS=192.0.2.1:7000             |             |
-    |    MESSAGE-INTEGRITY=...
+        |    MESSAGE-INTEGRITY=...
 			*/
 			fmt.Printf("allocate response : %s \n",respMsg)
 
 			response, err := Marshal(respMsg)
+
+			//fmt.Printf("real length : %d \n", binary.BigEndian.Uint16(response[2:4]))
+
 			if err != nil {
 				fmt.Println(err)
 				return
@@ -123,14 +152,15 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 			respMsg.TransID = msg.TransID
 			respMsg.Attributes = make([]*Attribute,0)
 
-
-			respMsg.Attributes = append(
-				respMsg.Attributes,newAttrNonce(),newAttrRealm(),newAttrError401(),newAttrSoftware(),)
+			respMsg.addAttribute(newAttrNonce())
+			respMsg.addAttribute(newAttrRealm())
+			respMsg.addAttribute(newAttrError401())
+			respMsg.addAttribute(newAttrSoftware())
 
 			// addMappedAddress(respMsg, raddr)
 
 
-			fmt.Printf("allocate response : %s \n",respMsg)
+			//fmt.Printf("allocate response : %s \n",respMsg)
 
 			response, err := Marshal(respMsg)
 			if err != nil {

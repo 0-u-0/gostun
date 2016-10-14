@@ -12,18 +12,7 @@ type Entry struct {
 	udpConn *net.UDPConn
 }
 
-func (s *Entry) serve() {
-	for {
-		var buf = make([]byte, 1024)
-		size, remoteAddr, err := s.udpConn.ReadFromUDP(buf)
-		if err != nil {
-			continue
-		}
-		go s.handleData(remoteAddr, buf[:size])
-	}
-}
-
-func (s *Entry) Serve() {
+func (s *Entry) serveUDP() {
 	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(s.Port))
 	if err != nil {
 		log.Fatal(err)
@@ -32,114 +21,67 @@ func (s *Entry) Serve() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	s.serve()
+
+	for {
+		var buf = make([]byte, 1024)
+		size, remoteAddr, err := s.udpConn.ReadFromUDP(buf)
+		if err != nil {
+			continue
+		}
+		go s.handleData(remoteAddr, buf[:size],false)
+	}
 }
 
-func NewServer(port int) *Entry {
+func (s *Entry) Serve() {
+	serverTCP, serverTLS := false,false
+	serverUDP := true
+
+	if serverTCP{
+
+	}
+
+	if serverTLS {
+
+	}
+
+	if serverUDP {
+		s.serveUDP()
+	}
+
+}
+
+func NewEntry(port int) *Entry {
 	ret := new(Entry)
 	ret.Port = port
-
 	return ret
 }
 
-func (s *Entry) handleData(raddr *net.UDPAddr, data []byte) {
+func (entry *Entry) handleData(raddr *net.UDPAddr, data []byte,tcp bool) {
 	msg, err := UnMarshal(data)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	var response []byte
 	switch msg.MessageType {
 	case TypeBindingRequest:
-		//todo : add connection
-		//stunMessageHandle()
+		response = stunMessageHandle(msg,raddr,false)
 	case TypeAllocate:
-
-		ok := msg.hasAttribute(AttributeRealm)
-
-		if ok {
-
-			respMsg := new(Message)
-			respMsg.MessageType = TypeAllocateResponse
-			respMsg.TransID = msg.TransID
-			respMsg.Attributes = make([]*Attribute,0)
-
-			respMsg.addAttribute(newAttrXORRelayedAddress())
-			respMsg.addAttribute(newAttrXORMappedAddress(raddr))
-			respMsg.addAttribute(newAttrLifetime())
-			respMsg.addAttribute(newAttrSoftware())
-			respMsg.addAttribute(newAttrDummyMessageIntegrity())
-
-			fmt.Printf("m-i response : %s \n",respMsg)
-
-			mi, err := Marshal(respMsg)
-
-
-			fmt.Printf("response hex : %x \n",mi)
-
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			key := generateKey("user","pass","realm")
-
-			hmacValue := MessageIntegrityHmac(mi[0:len(mi)-24],key)
-
-			fmt.Printf("hmac2 length %d , hmac2 %x \n",len(hmacValue),hmacValue)
-
-
-			response := append(mi[:len(mi)-20],hmacValue...)
-
-			testResponse, err := UnMarshal(response)
-
-			fmt.Printf("test response : %s \n",testResponse)
-			fmt.Printf("test response hex : %x \n",response)
-
-
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			//send response
-			_, err = s.udpConn.WriteToUDP(response, raddr)
-			if err != nil {
-				fmt.Println(err)
-			}
-			//fmt.Printf("binding response : %s \n",respMsg)
-
-
-		}else{
-			respMsg := new(Message)
-			respMsg.MessageType = TypeAllocateErrorResponse
-			respMsg.TransID = msg.TransID
-			respMsg.Attributes = make([]*Attribute,0)
-
-			respMsg.addAttribute(newAttrNonce())
-			respMsg.addAttribute(newAttrRealm())
-			respMsg.addAttribute(newAttrError401())
-			respMsg.addAttribute(newAttrSoftware())
-
-			// addMappedAddress(respMsg, raddr)
-
-
-			//fmt.Printf("allocate response : %s \n",respMsg)
-
-			response, err := Marshal(respMsg)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			//send response
-			_, err = s.udpConn.WriteToUDP(response, raddr)
-			if err != nil {
-				fmt.Println(err)
-			}
-			//fmt.Printf("binding response : %s \n",respMsg)
-		}
-
-
+		response = turnMessageHandle(msg,raddr,false)
 	}
 
+	if !tcp {
+		if response != nil {
+			_, err := entry.udpConn.WriteToUDP(response, raddr)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}else {
+			fmt.Println("no response.")
+		}
 
+	}else {
+		//todo : add tcp
+	}
 }

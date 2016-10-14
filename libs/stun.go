@@ -5,7 +5,7 @@ import (
 	"net"
 )
 
-func stunMessageHandle(entry *Entry,message *Message,raddr *net.UDPAddr)  {
+func stunMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response []byte) {
 	switch message.MessageType {
 	case TypeBindingRequest:
 		//fmt.Printf("binding request : %s \n",msg)
@@ -17,22 +17,16 @@ func stunMessageHandle(entry *Entry,message *Message,raddr *net.UDPAddr)  {
 		respMsg.Attributes = make([]*Attribute,0)
 
 		respMsg.addAttribute(newAttrXORMappedAddress(raddr))
-		// addMappedAddress(respMsg, raddr)
 
-
-		//fmt.Printf("binding response : %s \n",respMsg)
-
-		response, err := Marshal(respMsg)
+		var err error
+		response, err = Marshal(respMsg)
 
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		//send response
-		_, err = entry.udpConn.WriteToUDP(response, raddr)
-		if err != nil {
-			fmt.Println(err)
-		}
 	}
+
+	return
 }
 

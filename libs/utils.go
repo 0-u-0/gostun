@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"sync/atomic"
 	"time"
+	"log"
 )
 
 var counter uint32
@@ -39,3 +40,12 @@ func nonceValid(nonce []byte, sst int64, timeout int) bool {
 	}
 	return true
 }
+
+func PrintModuleLoaded(moduleName string)  {
+	log.Printf("< %s > module loads successfully",moduleName)
+}
+
+func PrintModuleRelease(moduleName string)  {
+	log.Printf("< %s > module releases successfully",moduleName)
+}
+

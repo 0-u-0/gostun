@@ -126,12 +126,9 @@ func generateKey(username,password,realm string) []byte  {
 }
 
 func MessageIntegrityHmac(value,key []byte) []byte {
-	mac := hmac.New(sha1.New,key)
-	mac.Write(value)
-	h := mac.Sum(nil)
-
-	fmt.Printf("hmac length %d , hmac %x \n",len(h),h)
-
+	hasher := hmac.New(sha1.New,key)
+	hasher.Write(value)
+	h := hasher.Sum(nil)
 	return h
 }
 
@@ -231,6 +228,7 @@ func  AttrTypeToString(attrType uint16) (typeString string)  {
 
 	return
 }
+
 func (a Attribute) String() string {
 	attrString := ""
 	switch a.AttrType {

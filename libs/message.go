@@ -3,7 +3,6 @@ package libs
 import (
 	"encoding/binary"
 	"errors"
-	"math/big"
 	"fmt"
 )
 
@@ -15,9 +14,9 @@ var (
 
 //Message holds the information about a STUN Message
 type Message struct {
-	MessageType   uint16
-	MessageLength uint16
-	TransID       *big.Int
+	MessageType   uint16 //2
+	MessageLength uint16 //2
+	TransID       []byte // 4 + 12
 	Attributes    []*Attribute
 }
 
@@ -58,9 +57,7 @@ func UnMarshal(data []byte) (*Message, error) {
 	msg.MessageLength = binary.BigEndian.Uint16(data[2:4])
 
 
-	tid := new(big.Int)
-	tid.SetBytes(data[4:20])
-	msg.TransID = tid
+	msg.TransID = data[4:20]
 
 	//if we have leftover data, parse as attributes
 	if length > 20 {
@@ -91,7 +88,7 @@ func Marshal(m *Message) ([]byte, error) {
 	result := make([]byte, 1024)
 	//first do the header
 	binary.BigEndian.PutUint16(result[:2], m.MessageType)
-	result = append(result[:4], m.TransID.Bytes()...)
+	result = append(result[:4], m.TransID...)
 
 	//now we do the attributes
 	if m.Attributes != nil {
@@ -135,13 +132,6 @@ func (m Message) getAttribute(attrType uint16) *Attribute  {
 }
 
 
-//fixme : not change length
-func (m *Message)updateAttribute(attrType uint16, value []byte)  {
-	attr := m.getAttribute(AttributeMessageIntegrity)
-	if attr != nil {
-		attr.Value = value
-	}
-}
 
 func (m Message) TypeToString() (typeString string)  {
 	switch m.MessageType {
@@ -170,7 +160,7 @@ func (m Message) String() string {
 		}
 	}
 
-	return fmt.Sprintf(`packet : type -> %s , length -> %d , tid -> %d , length of the attr -> %d	%s
+	return fmt.Sprintf(`packet : type -> %s , length -> %d , tid -> %X , length of the attr -> %d	%s
 			 `,
 		m.TypeToString(),m.MessageLength,m.TransID,len(m.Attributes),attrString)
 }

@@ -71,6 +71,7 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 		//fmt.Printf("binding response : %s \n",respMsg)
 
 		response, err := Marshal(respMsg)
+
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -100,8 +101,10 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 
 			fmt.Printf("m-i response : %s \n",respMsg)
 
-
 			mi, err := Marshal(respMsg)
+
+
+			fmt.Printf("response hex : %x \n",mi)
 
 			if err != nil {
 				fmt.Println(err)
@@ -110,10 +113,19 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 			//fmt.Printf("fake length : %d \n", binary.BigEndian.Uint16(mi[2:4]))
 
 			key := generateKey("user","pass","realm")
-			hmacValue := messageIntegrityHmac(mi[:len(mi)-24],key)
+
+			hmacValue := MessageIntegrityHmac(mi[0:len(mi)-24],key)
+
+			fmt.Printf("hmac2 length %d , hmac2 %x \n",len(hmacValue),hmacValue)
 
 
 			response := append(mi[:len(mi)-20],hmacValue...)
+
+			testResponse, err := UnMarshal(response)
+
+			fmt.Printf("test response : %s \n",testResponse)
+			fmt.Printf("test response hex : %x \n",response)
+
 
 			if err != nil {
 				fmt.Println(err)

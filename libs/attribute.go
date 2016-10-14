@@ -40,8 +40,8 @@ func align(n uint16) uint16 {
 func newAttr(attrType uint16,value []byte) *Attribute {
 	att := new(Attribute)
 	att.AttrType = attrType
+	att.Length = uint16(len(value))
 	att.Value = padding(value)
-	att.Length = uint16(len(att.Value))
 	return att
 }
 
@@ -63,8 +63,8 @@ func newAttrMappedAddress(remoteAddress *net.UDPAddr) *Attribute  {
 
 func newAttrXORMappedAddress(remoteAddress *net.UDPAddr) *Attribute  {
 	port := uint16(remoteAddress.Port)
-	reflexiveAddress := remoteAddress.IP.To4()
-	//reflexiveAddress := net.ParseIP("11.11.11.11").To4()
+	//reflexiveAddress := remoteAddress.IP.To4()
+	reflexiveAddress := net.ParseIP("11.11.11.11").To4()
 	xorBytes := xorAddress(port, reflexiveAddress)
 
 	value := append([]byte{0, attributeFamilyIPv4}, xorBytes...)
@@ -91,7 +91,7 @@ func newAttrError401() *Attribute{
 }
 
 func newAttrXORRelayedAddress() *Attribute{
-	relayedAddress := net.ParseIP("139.198.0.26").To4()
+	relayedAddress := net.ParseIP("22.22.22.22").To4()
 	port := uint16(33333)
 	xorBytes := xorAddress(port, relayedAddress)
 	value := append([]byte{0, attributeFamilyIPv4}, xorBytes...)
@@ -126,10 +126,14 @@ func generateKey(username,password,realm string) []byte  {
 	return key
 }
 
-func messageIntegrityHmac(value,key []byte) []byte {
+func MessageIntegrityHmac(value,key []byte) []byte {
 	mac := hmac.New(sha1.New,key)
 	mac.Write(value)
-	return mac.Sum(nil)
+	h := mac.Sum(nil)
+
+	fmt.Printf("hmac length %d , hmac %x \n",len(h),h)
+
+	return h
 }
 
 
@@ -237,6 +241,9 @@ func (a Attribute) String() string {
 	case AttributeLifetime:
 		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %d \n",
 			AttrTypeToString(a.AttrType), a.Length,  binary.BigEndian.Uint32(a.Value) )
+	case AttributeMessageIntegrity:
+		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %x \n",
+			AttrTypeToString(a.AttrType), a.Length,  a.Value )
 	default:
 		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %s \n",
 			AttrTypeToString(a.AttrType), a.Length, a.Value)

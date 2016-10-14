@@ -37,11 +37,10 @@ func (s *RelayServer) Serve() {
 }
 
 //NewServer conveniently creates a new server from the given port
-func NewRelayServer(port int) *Server {
-	ret := new(Server)
+func NewRelayServer(port int) *Entry {
+	ret := new(Entry)
 	ret.Port = port
-	ret.Registry = new(Registry)
-	ret.Registry.mappings = make(map[string]*Client)
+
 	return ret
 }
 

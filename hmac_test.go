@@ -56,19 +56,3 @@ func Test_Hmac(t *testing.T) {
 		cap(content),content,key,mac)
 }
 
-func Test_Md5(t *testing.T)  {
-
-	hasher := md5.New()
-	hasher.Write([]byte("user:realm:pass"))
-	s := hex.EncodeToString(hasher.Sum(nil))
-
-
-	key := []byte{
-		0x35,0xbb,0x24,0x0f,
-		0x16,0xc0,0x11,0xbd,
-		0x47,0x5e,0x95,0xe7,
-		0x02,0x10,0xda,0x4f,
-	}
-
-	t.Logf("md5 %x ",)
-}

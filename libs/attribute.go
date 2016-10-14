@@ -31,12 +31,11 @@ func padding(bytes []byte) []byte {
 	return append(bytes, make([]byte, align(length)-length)...)
 }
 
-// Align the uint16 number to the smallest multiple of 4, which is larger than
-// or equal to the uint16 number.
 func align(n uint16) uint16 {
 	return (n + 3) & 0xfffc
 }
 
+// https://tools.ietf.org/html/rfc5389#page-32
 func newAttr(attrType uint16,value []byte) *Attribute {
 	att := new(Attribute)
 	att.AttrType = attrType

@@ -7,17 +7,15 @@ import (
 	"strconv"
 )
 
-//Server is the main struct that contains the connection and registry information
-type Server struct {
+type Entry struct {
 	Port       int
-	Registry   *Registry
-	connection *net.UDPConn
+	udpConn *net.UDPConn
 }
 
-func (s *Server) serve() {
+func (s *Entry) serve() {
 	for {
 		var buf = make([]byte, 1024)
-		size, remoteAddr, err := s.connection.ReadFromUDP(buf)
+		size, remoteAddr, err := s.udpConn.ReadFromUDP(buf)
 		if err != nil {
 			continue
 		}
@@ -25,29 +23,26 @@ func (s *Server) serve() {
 	}
 }
 
-//Serve initiates a UDP connection that listens on any port for incoming data
-func (s *Server) Serve() {
+func (s *Entry) Serve() {
 	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(s.Port))
 	if err != nil {
 		log.Fatal(err)
 	}
-	s.connection, err = net.ListenUDP("udp", laddr)
+	s.udpConn, err = net.ListenUDP("udp", laddr)
 	if err != nil {
 		log.Fatal(err)
 	}
 	s.serve()
 }
 
-//NewServer conveniently creates a new server from the given port
-func NewServer(port int) *Server {
-	ret := new(Server)
+func NewServer(port int) *Entry {
+	ret := new(Entry)
 	ret.Port = port
-	ret.Registry = new(Registry)
-	ret.Registry.mappings = make(map[string]*Client)
+
 	return ret
 }
 
-func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
+func (s *Entry) handleData(raddr *net.UDPAddr, data []byte) {
 	msg, err := UnMarshal(data)
 	if err != nil {
 		fmt.Println(err)
@@ -56,33 +51,9 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 
 	switch msg.MessageType {
 	case TypeBindingRequest:
-		//fmt.Printf("binding request : %s \n",msg)
-
-		//todo : handle with origin
-		respMsg := new(Message)
-		respMsg.MessageType = TypeBindingResponse
-		respMsg.TransID = msg.TransID
-		respMsg.Attributes = make([]*Attribute,0)
-
-		respMsg.addAttribute(newAttrXORMappedAddress(raddr))
-		// addMappedAddress(respMsg, raddr)
-
-
-		//fmt.Printf("binding response : %s \n",respMsg)
-
-		response, err := Marshal(respMsg)
-
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		//send response
-		_, err = s.connection.WriteToUDP(response, raddr)
-		if err != nil {
-			fmt.Println(err)
-		}
+		//todo : add connection
+		//stunMessageHandle()
 	case TypeAllocate:
-		//fmt.Printf("allocate request : %s \n",msg)
 
 		ok := msg.hasAttribute(AttributeRealm)
 
@@ -110,7 +81,6 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 				fmt.Println(err)
 				return
 			}
-			//fmt.Printf("fake length : %d \n", binary.BigEndian.Uint16(mi[2:4]))
 
 			key := generateKey("user","pass","realm")
 
@@ -132,7 +102,7 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 				return
 			}
 			//send response
-			_, err = s.connection.WriteToUDP(response, raddr)
+			_, err = s.udpConn.WriteToUDP(response, raddr)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -161,7 +131,7 @@ func (s *Server) handleData(raddr *net.UDPAddr, data []byte) {
 				return
 			}
 			//send response
-			_, err = s.connection.WriteToUDP(response, raddr)
+			_, err = s.udpConn.WriteToUDP(response, raddr)
 			if err != nil {
 				fmt.Println(err)
 			}

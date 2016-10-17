@@ -11,7 +11,14 @@ Features
 
 - [x] STUN UDP
 - [ ] FINGERPRINT
+- [ ] IPV6
 - [ ] STUN TCP
 - [ ] STUN TCP over TLS
 - [ ] TURN TCP
 - [ ] TURN TCP over TLS
+
+
+Test
+------
+
+- [ ] STUN Public Test

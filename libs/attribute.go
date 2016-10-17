@@ -26,6 +26,13 @@ func xorAddress(port uint16, addr []byte) []byte {
 
 }
 
+func unXorAddress(xorAddress []byte) (port uint16,addr []byte)  {
+	addr = make([]byte,4)
+	port = binary.BigEndian.Uint16(xorAddress[2:4])^uint16(magicCookie>>16)
+	binary.BigEndian.PutUint32(addr,binary.BigEndian.Uint32(xorAddress[4:8])^magicCookie)
+	return
+}
+
 func padding(bytes []byte) []byte {
 	length := uint16(len(bytes))
 	return append(bytes, make([]byte, align(length)-length)...)
@@ -90,7 +97,8 @@ func newAttrError401() *Attribute{
 }
 
 func newAttrXORRelayedAddress() *Attribute{
-	relayedAddress := net.ParseIP("22.22.22.22").To4()
+	//relayedAddress := net.ParseIP("22.22.22.22").To4()
+	relayedAddress := net.ParseIP("139.198.0.26").To4()
 	port := uint16(33333)
 	xorBytes := xorAddress(port, relayedAddress)
 	value := append([]byte{0, attributeFamilyIPv4}, xorBytes...)
@@ -222,6 +230,8 @@ func  AttrTypeToString(attrType uint16) (typeString string)  {
 		typeString = "CiscoFlowdata"
 	case AttributeOrigin:
 		typeString = "Origin"
+	case AttributeNetworkInfo :
+		typeString = "NetworkInfo"
 	default:
 		typeString = "fuck??"
 	}
@@ -241,6 +251,10 @@ func (a Attribute) String() string {
 	case AttributeMessageIntegrity:
 		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %x \n",
 			AttrTypeToString(a.AttrType), a.Length,  a.Value )
+	case AttributeXorPeerAddress:
+		port ,addr :=  unXorAddress(a.Value)
+		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %s:%d \n",
+			AttrTypeToString(a.AttrType), a.Length,  net.IP(addr),port )
 	default:
 		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %s \n",
 			AttrTypeToString(a.AttrType), a.Length, a.Value)

@@ -76,6 +76,9 @@ const (
 	AttributeEcnCheckStun           = 0x802d
 	AttributeOrigin                 = 0x802f
 	AttributeCiscoFlowdata          = 0xc000
+	//https://tools.ietf.org/html/draft-thatcher-ice-network-cost-00
+	AttributeNetworkInfo            = 0xc057
+
 )
 
 const (
@@ -91,9 +94,7 @@ const (
 	TypeRefresh                        = 0x0004
 	TypeRefreshResponse                = 0x0104
 	TypeRefreshErrorResponse           = 0x0114
-	TypeSend                           = 0x0006
-	TypeSendResponse                   = 0x0106
-	TypeSendErrorResponse              = 0x0116
+	TypeSendIndication                 = 0x0016
 	TypeData                           = 0x0007
 	TypeDataResponse                   = 0x0107
 	TypeDataErrorResponse              = 0x0117

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"encoding/hex"
 )
 
 //ErrX are the errors to be expected during message handling
@@ -145,6 +146,12 @@ func (m Message) TypeToString() (typeString string)  {
 		typeString = "AllocateErrorResponse"
 	case TypeAllocateResponse:
 		typeString = "AllocateResponse"
+	case TypeSendIndication:
+		typeString = "SendIndication"
+	default:
+		stringByte := make([]byte,2)
+		binary.BigEndian.PutUint16(stringByte,m.MessageType)
+		typeString = hex.EncodeToString(stringByte)
 	}
 	return
 }

@@ -1,10 +1,10 @@
 package libs
 
 import (
-	"fmt"
 	"net"
 	"strconv"
 	"log"
+	"fmt"
 )
 
 type RelayServer struct {
@@ -37,15 +37,15 @@ func (s *RelayServer) Serve() {
 }
 
 //NewServer conveniently creates a new server from the given port
-func NewRelayServer(port int) *Entry {
-	ret := new(Entry)
+func NewRelayServer(port int) *RelayServer {
+	ret := new(RelayServer)
 	ret.Port = port
 
 	return ret
 }
 
 func (s *RelayServer) handleData(raddr *net.UDPAddr, data []byte) {
-	msg, err := UnMarshal(data)
+	msg , err := UnMarshal(data)
 	if err != nil {
 		return
 	}

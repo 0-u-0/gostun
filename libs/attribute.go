@@ -62,8 +62,8 @@ func newAttrMappedAddress(remoteAddress *net.UDPAddr) *Attribute  {
 
 func newAttrXORMappedAddress(remoteAddress *net.UDPAddr) *Attribute  {
 	port := uint16(remoteAddress.Port)
-	//reflexiveAddress := remoteAddress.IP.To4()
-	reflexiveAddress := net.ParseIP("11.11.11.11").To4()
+	reflexiveAddress := remoteAddress.IP.To4()
+	//reflexiveAddress := net.ParseIP("11.11.11.11").To4()
 	xorBytes := xorAddress(port, reflexiveAddress)
 
 	value := append([]byte{0, attributeFamilyIPv4}, xorBytes...)
@@ -71,7 +71,7 @@ func newAttrXORMappedAddress(remoteAddress *net.UDPAddr) *Attribute  {
 }
 
 func newAttrNonce() *Attribute{
-	return newAttr(AttributeNonce,[]byte("aaaaaaa"))
+	return newAttr(AttributeNonce,[]byte("nonce"))
 }
 
 func newAttrRealm() *Attribute{
@@ -128,8 +128,8 @@ func generateKey(username,password,realm string) []byte  {
 func MessageIntegrityHmac(value,key []byte) []byte {
 	hasher := hmac.New(sha1.New,key)
 	hasher.Write(value)
-	h := hasher.Sum(nil)
-	return h
+	digest := hasher.Sum(nil)
+	return digest
 }
 
 

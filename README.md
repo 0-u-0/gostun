@@ -10,6 +10,7 @@ Features
 --------
 
 - [x] STUN UDP
+- [ ] FINGERPRINT
 - [ ] STUN TCP
 - [ ] STUN TCP over TLS
 - [ ] TURN TCP

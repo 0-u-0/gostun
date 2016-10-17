@@ -1,11 +1,13 @@
 package libs
 
 import (
-	"fmt"
 	"net"
+	"fmt"
 )
 
-func turnMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response []byte)  {
+func turnMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response []byte,err error)  {
+	//Log.Verbosef("turn request : %s",message)
+
 	switch message.MessageType {
 	case TypeAllocate:
 
@@ -24,11 +26,10 @@ func turnMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response [
 			respMsg.addAttribute(newAttrSoftware())
 			respMsg.addAttribute(newAttrDummyMessageIntegrity())
 
-
-			m_i_response, err := Marshal(respMsg)
+			var m_i_response []byte
+			m_i_response, err = Marshal(respMsg)
 
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 
@@ -38,7 +39,7 @@ func turnMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response [
 
 			response = append(m_i_response[:len(m_i_response)-20],hmacValue...)
 
-			//fmt.Printf("binding response : %s \n",respMsg)
+			fmt.Printf("binding response : %s \n",respMsg)
 
 
 		}else{
@@ -55,17 +56,17 @@ func turnMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response [
 			// addMappedAddress(respMsg, raddr)
 
 
-			//fmt.Printf("allocate response : %s \n",respMsg)
+			fmt.Printf("allocate response : %s \n",respMsg)
 
-			var err error
 			response, err = Marshal(respMsg)
+
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 
 		}
 	}
+
 
 	return
 }

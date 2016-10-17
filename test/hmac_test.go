@@ -1,18 +1,11 @@
-package gostun
+package test
 
 import (
 	"testing"
 
 	"git.learning-tech.cn/realtimecat/gostun/libs"
-	"crypto/md5"
-	"encoding/hex"
 )
 
-func GetMD5Hash(text string) string {
-	hasher := md5.New()
-	hasher.Write([]byte(text))
-	return hex.EncodeToString(hasher.Sum(nil))
-}
 
 
 func Test_Hmac(t *testing.T) {

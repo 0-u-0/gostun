@@ -5,44 +5,6 @@ const (
 	fingerprint = 0x5354554e
 )
 
-// NATType is the type of NAT described by int.
-type NATType int
-
-// NAT types.
-const (
-	NATError NATType = iota
-	NATUnknown
-	NATNone
-	NATBlocked
-	NATFull
-	NATSymetric
-	NATRestricted
-	NATPortRestricted
-	NATSymetricUDPFirewall
-)
-
-var natStr map[NATType]string
-
-func init() {
-	natStr = map[NATType]string{
-		NATError:               "Test failed",
-		NATUnknown:             "Unexpected response from the STUN server",
-		NATBlocked:             "UDP is blocked",
-		NATFull:                "Full cone NAT",
-		NATSymetric:            "Symetric NAT",
-		NATRestricted:          "Restricted NAT",
-		NATPortRestricted:      "Port restricted NAT",
-		NATNone:                "Not behind a NAT",
-		NATSymetricUDPFirewall: "Symetric UDP firewall",
-	}
-}
-
-func (nat NATType) String() string {
-	if s, ok := natStr[nat]; ok {
-		return s
-	}
-	return "Unknown"
-}
 
 const (
 	errorTryAlternate                 = 300

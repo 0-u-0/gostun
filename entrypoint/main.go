@@ -6,7 +6,8 @@ import (
 
 func main() {
 
-	entry := libs.NewEntry(3478)
-	entry.Serve()
+	libs.Init()
 
+	//server := libs.NewRelayServer(33333)
+	//server.Serve()
 }

@@ -1,14 +1,14 @@
 package libs
 
 import (
-	"fmt"
 	"net"
 )
 
-func stunMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response []byte) {
+func stunMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response []byte,err error) {
+	Log.Verbosef("stun request : %s ",message)
+
 	switch message.MessageType {
 	case TypeBindingRequest:
-		//fmt.Printf("binding request : %s \n",msg)
 
 		//todo : handle with origin
 		respMsg := new(Message)
@@ -18,11 +18,9 @@ func stunMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response [
 
 		respMsg.addAttribute(newAttrXORMappedAddress(raddr))
 
-		var err error
 		response, err = Marshal(respMsg)
 
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 	}

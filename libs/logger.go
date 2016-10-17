@@ -29,8 +29,8 @@ const (
 )
 
 const (
-	VERBOSE_TAG =" [ VERB ] "
 	SERVER_TAG = " [ SERV ] "
+	VERBOSE_TAG =" [ VERB ] "
 	DEBUG_TAG = " [ DEBU ] "
 	INFO_TAG = " [ INFO ] "
 	WARNING_TAG = " [ WARN ] "

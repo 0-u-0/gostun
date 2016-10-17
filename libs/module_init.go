@@ -8,10 +8,13 @@ import (
 )
 
 func Init()  {
+	log.SetFlags(log.Lshortfile)
+	log.SetPrefix(SERVER_TAG)
+
 	LoadArgsModule()
 	LoadConfigurationModule()
 	LoadLoggerModule()
-
+	LoadEntryModule()
 
 }
 
@@ -22,9 +25,6 @@ var (
 
 
 func LoadArgsModule() {
-	log.SetFlags(log.Lshortfile)
-	log.SetPrefix(SERVER_TAG)
-
 	App.Version(APP_VERSION)
 	App.HelpFlag.Short('h')
 	App.VersionFlag.Short('v')

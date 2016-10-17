@@ -1,7 +1,6 @@
 package libs
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -12,6 +11,11 @@ type Entry struct {
 	udpConn *net.UDPConn
 }
 
+func LoadEntryModule()  {
+	PrintModuleLoaded("Entry")
+	entry := NewEntry(3478)
+	entry.Serve()
+}
 func (s *Entry) serveUDP() {
 	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(s.Port))
 	if err != nil {
@@ -59,29 +63,36 @@ func NewEntry(port int) *Entry {
 func (entry *Entry) handleData(raddr *net.UDPAddr, data []byte,tcp bool) {
 	msg, err := UnMarshal(data)
 	if err != nil {
-		fmt.Println(err)
+		Log.Warning(err)
 		return
 	}
 
 	var response []byte
+	var response_err error
 	switch msg.MessageType {
 	case TypeBindingRequest:
-		response = stunMessageHandle(msg,raddr,false)
+		response,response_err = stunMessageHandle(msg,raddr,false)
 	case TypeAllocate:
-		response = turnMessageHandle(msg,raddr,false)
+		response,response_err = turnMessageHandle(msg,raddr,false)
 	}
 
-	if !tcp {
-		if response != nil {
-			_, err := entry.udpConn.WriteToUDP(response, raddr)
-			if err != nil {
-				fmt.Println(err)
+	if response_err == nil{
+		if !tcp {
+			if response != nil {
+				_, err := entry.udpConn.WriteToUDP(response, raddr)
+				if err != nil {
+					Log.Warning(err)
+				}
+			}else {
+				//todo add message type check
+				Log.Warning("no response.")
 			}
-		}else {
-			fmt.Println("no response.")
-		}
 
-	}else {
-		//todo : add tcp
+		}else {
+			//todo : add tcp
+		}
+	}else{
+		Log.Warningf("response error : %s",response_err)
 	}
+
 }

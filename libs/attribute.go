@@ -7,6 +7,7 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/hmac"
+	"time"
 )
 
 type Attribute struct{
@@ -78,7 +79,20 @@ func newAttrXORMappedAddress(remoteAddress *net.UDPAddr) *Attribute  {
 }
 
 func newAttrNonce() *Attribute{
-	return newAttr(AttributeNonce,[]byte("nonce"))
+	timestampBytes := make([]byte, 8)
+	timestamp := time.Now().Unix()
+	binary.BigEndian.PutUint64(timestampBytes, uint64(timestamp^magicCookie))
+	return newAttr(AttributeNonce,timestampBytes)
+}
+
+func validNonce(nonce []byte) bool {
+	var timeout uint64 = 1200
+	originNonce := binary.BigEndian.Uint64(nonce)^magicCookie
+
+	if  originNonce + timeout > uint64(time.Now().Unix()){
+		return true
+	}
+	return false
 }
 
 func newAttrRealm() *Attribute{
@@ -98,7 +112,7 @@ func newAttrError401() *Attribute{
 
 func newAttrXORRelayedAddress() *Attribute{
 	//relayedAddress := net.ParseIP("22.22.22.22").To4()
-	relayedAddress := net.ParseIP("139.198.0.26").To4()
+	relayedAddress := net.ParseIP("192.168.1.26").To4()
 	port := uint16(33333)
 	xorBytes := xorAddress(port, relayedAddress)
 	value := append([]byte{0, attributeFamilyIPv4}, xorBytes...)
@@ -242,13 +256,14 @@ func  AttrTypeToString(attrType uint16) (typeString string)  {
 func (a Attribute) String() string {
 	attrString := ""
 	switch a.AttrType {
-	case AttributeRequestedTransport:
+	case AttributeRequestedTransport,AttributePriority,
+		AttributeIceControlled,AttributeIceControlling:
 		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %d \n",
 			AttrTypeToString(a.AttrType), a.Length,  uint8(a.Value[0]) )
 	case AttributeLifetime:
 		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %d \n",
 			AttrTypeToString(a.AttrType), a.Length,  binary.BigEndian.Uint32(a.Value) )
-	case AttributeMessageIntegrity:
+	case AttributeMessageIntegrity,AttributeFingerprint:
 		attrString = fmt.Sprintf("	attr: type -> %s , length -> %d , value -> %x \n",
 			AttrTypeToString(a.AttrType), a.Length,  a.Value )
 	case AttributeXorPeerAddress:

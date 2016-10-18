@@ -4,3 +4,5 @@
 *.out
 .idea/
 entrypoint/entrypoint
+config.json
+

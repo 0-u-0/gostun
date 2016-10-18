@@ -1,6 +1,6 @@
 Usage
 ------
-
+```
 usage: gostun [<flags>]
 
 实时猫 TURN/STUN 服务器
@@ -13,7 +13,7 @@ Flags:
       --min_port=49152           Lower bound of the UDP port range for relay endpoints allocation.
       --max_port=65535           Upper bound of the UDP port range for relay endpoints allocation.
   -v, --version                  Show application version.
-
+```
 
 
 RFC
@@ -29,6 +29,8 @@ Features
 
 - [x] STUN UDP
 - [x] Check Nonce
+- [x] NAT Mapped Support
+- [ ] Port Range
 - [ ] FINGERPRINT
 - [ ] STUN TCP
 - [ ] STUN TCP over TLS

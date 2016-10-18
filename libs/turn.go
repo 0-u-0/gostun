@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+
+
 func turnMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response []byte,err error)  {
 	//Log.Verbosef("turn request : %s",message)
 
@@ -21,7 +23,8 @@ func turnMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response [
 
 			respMsg.MessageType = TypeAllocateResponse
 
-			respMsg.addAttribute(newAttrXORRelayedAddress())
+			//todo :
+			respMsg.addAttribute(newAttrXORRelayedAddress(33333))
 			respMsg.addAttribute(newAttrXORMappedAddress(raddr))
 			respMsg.addAttribute(newAttrLifetime())
 			respMsg.addAttribute(newAttrSoftware())

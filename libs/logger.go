@@ -17,6 +17,7 @@ type Logging struct  {
 	Level LogLevel
 	NormalLog  *log.Logger
 	ErrorLog *log.Logger
+	FatalLog *log.Logger
 }
 
 
@@ -25,6 +26,7 @@ const (
 	DEBUG
 	INFO
 	WARNING
+	ERROR
 	FATAL
 )
 
@@ -34,6 +36,7 @@ const (
 	DEBUG_TAG = " [ DEBU ] "
 	INFO_TAG = " [ INFO ] "
 	WARNING_TAG = " [ WARN ] "
+	ERROR_TAG = "[ ERRO ]"
 	FATAL_TAG = " [ FATA ] "
 )
 
@@ -94,17 +97,31 @@ func (logging *Logging) Warningf(format string, v ...interface{})  {
 	}
 }
 
+func (logging *Logging) Error(v ...interface{})  {
+	if(logging.Level <= ERROR){
+		logging.ErrorLog.SetPrefix(ERROR_TAG)
+		logging.ErrorLog.Println(v...)
+	}
+}
+
+func (logging *Logging) Errorf(format string, v ...interface{})  {
+	if(logging.Level <= ERROR){
+		logging.ErrorLog.SetPrefix(ERROR_TAG)
+		logging.ErrorLog.Printf(format,v...)
+	}
+}
+
 func (logging *Logging) Fatal(v ...interface{})  {
 	if(logging.Level <= FATAL){
-		logging.ErrorLog.SetPrefix(FATAL_TAG)
-		logging.ErrorLog.Println(v...)
+		logging.FatalLog.SetPrefix(FATAL_TAG)
+		logging.FatalLog.Panic(v...)
 	}
 }
 
 func (logging *Logging) Fatalf(format string, v ...interface{})  {
 	if(logging.Level <= FATAL){
-		logging.ErrorLog.SetPrefix(FATAL_TAG)
-		logging.ErrorLog.Printf(format,v...)
+		logging.FatalLog.SetPrefix(FATAL_TAG)
+		logging.FatalLog.Panicf(format,v...)
 	}
 }
 
@@ -132,6 +149,7 @@ func LoadLoggerModule()  {
 	}
 	normalLog := log.New(log_file,"",log.LstdFlags)
 	errorLog := log.New(err_log_file,"",log.Lshortfile|log.LstdFlags)
+	fatalLog := log.New(err_log_file,"",log.Lshortfile|log.LstdFlags)
 
 	var level LogLevel
 	switch Config.LogLevel {
@@ -143,13 +161,15 @@ func LoadLoggerModule()  {
 		level =  INFO
 	case "warning":
 		level =  WARNING
+	case "error":
+		level =  ERROR
 	case "fatal":
 		level =  FATAL
 	default:
 		level = DEBUG
 	}
 
-	Log = Logging{level,normalLog,errorLog}
+	Log = Logging{level,normalLog,errorLog,fatalLog}
 
 	PrintModuleLoaded("Logger")
 

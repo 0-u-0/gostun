@@ -3,3 +3,4 @@
 #ignore .out files
 *.out
 .idea/
+entrypoint/entrypoint

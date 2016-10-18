@@ -110,10 +110,28 @@ func newAttrError401() *Attribute{
 	return newAttr(AttributeErrorCode,error401)
 }
 
-func newAttrXORRelayedAddress() *Attribute{
+func getRelayAddress() (raddr string) {
+	if external_ip != nil{
+		if IsValidIPv4(*external_ip) {
+			raddr = *external_ip
+			return
+		}
+	}
+
+	ipAddress , err := HostIP()
+	if err != nil {
+		raddr = "110.110.110.110"
+		Log.Error("Can not find relay address")
+	}else{
+		raddr = ipAddress
+	}
+	return
+}
+
+func newAttrXORRelayedAddress(rport int) *Attribute{
 	//relayedAddress := net.ParseIP("22.22.22.22").To4()
-	relayedAddress := net.ParseIP("192.168.1.26").To4()
-	port := uint16(33333)
+	relayedAddress := net.ParseIP(getRelayAddress()).To4()
+	port := uint16(rport)
 	xorBytes := xorAddress(port, relayedAddress)
 	value := append([]byte{0, attributeFamilyIPv4}, xorBytes...)
 	return newAttr(AttributeXorRelayedAddress,value)

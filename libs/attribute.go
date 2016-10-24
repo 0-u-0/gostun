@@ -128,13 +128,21 @@ func getRelayAddress() (raddr string) {
 	return
 }
 
-func newAttrXORRelayedAddress(rport int) *Attribute{
+func newAttrXORRelayedAddress(relay string ,rport int) *Attribute{
 	//relayedAddress := net.ParseIP("22.22.22.22").To4()
-	relayedAddress := net.ParseIP(getRelayAddress()).To4()
+	relayedAddress := net.ParseIP(relay).To4()
 	port := uint16(rport)
 	xorBytes := xorAddress(port, relayedAddress)
 	value := append([]byte{0, attributeFamilyIPv4}, xorBytes...)
 	return newAttr(AttributeXorRelayedAddress,value)
+}
+
+func newAttrXORPeerAddress(peer string, pport int) *Attribute {
+	relayedAddress := net.ParseIP(peer).To4()
+	port := uint16(pport)
+	xorBytes := xorAddress(port, relayedAddress)
+	value := append([]byte{0, attributeFamilyIPv4}, xorBytes...)
+	return newAttr(AttributeXorPeerAddress,value)
 }
 
 func newAttrSoftware() *Attribute{

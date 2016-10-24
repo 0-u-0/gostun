@@ -91,11 +91,11 @@ const (
 	TypeAllocate                       = 0x0003
 	TypeAllocateResponse               = 0x0103
 	TypeAllocateErrorResponse          = 0x0113
-	TypeRefresh                        = 0x0004
+	TypeRefreshRequest                 = 0x0004
 	TypeRefreshResponse                = 0x0104
 	TypeRefreshErrorResponse           = 0x0114
 	TypeSendIndication                 = 0x0016
-	TypeData                           = 0x0007
+	TypeDataIndication                 = 0x0017
 	TypeDataResponse                   = 0x0107
 	TypeDataErrorResponse              = 0x0117
 	TypeCreatePermisiion               = 0x0008

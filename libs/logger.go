@@ -3,6 +3,9 @@ package libs
 import (
 	"os"
 	"log"
+	"runtime"
+	"fmt"
+	"path"
 )
 
 var (
@@ -34,9 +37,9 @@ const (
 	SERVER_TAG = " [ SERV ] "
 	VERBOSE_TAG =" [ VERB ] "
 	DEBUG_TAG = " [ DEBU ] "
-	INFO_TAG = " [ INFO ] "
-	WARNING_TAG = " [ WARN ] "
-	ERROR_TAG = "[ ERRO ]"
+	INFO_TAG = " [ INFO ] %s:%d: "
+	WARNING_TAG = " [ WARN ] %s:%d: "
+	ERROR_TAG = " [ ERRO ] %s:%d: "
 	FATAL_TAG = " [ FATA ] "
 )
 
@@ -71,42 +74,48 @@ func (logging *Logging) Debugf(format string, v ...interface{}) {
 
 func (logging *Logging) Info(v ...interface{})  {
 	if(logging.Level <= INFO){
-		logging.NormalLog.SetPrefix(INFO_TAG)
+		_, file, line, _ := runtime.Caller(1)
+		logging.NormalLog.SetPrefix(fmt.Sprintf(INFO_TAG,path.Base(file),line))
 		logging.NormalLog.Println(v...)
 	}
 }
 
 func (logging *Logging) Infof(format string, v ...interface{})  {
 	if(logging.Level <= INFO){
-		logging.NormalLog.SetPrefix(INFO_TAG)
+		_, file, line, _ := runtime.Caller(1)
+		logging.NormalLog.SetPrefix(fmt.Sprintf(INFO_TAG,path.Base(file),line))
 		logging.NormalLog.Printf(format,v...)
 	}
 }
 
 func (logging *Logging) Warning(v ...interface{})  {
 	if(logging.Level <= WARNING){
-		logging.NormalLog.SetPrefix(WARNING_TAG)
+		_, file, line, _ := runtime.Caller(1)
+		logging.NormalLog.SetPrefix(fmt.Sprintf(WARNING_TAG,path.Base(file),line))
 		logging.NormalLog.Println(v...)
 	}
 }
 
 func (logging *Logging) Warningf(format string, v ...interface{})  {
 	if(logging.Level <= WARNING){
-		logging.NormalLog.SetPrefix(WARNING_TAG)
+		_, file, line, _ := runtime.Caller(1)
+		logging.NormalLog.SetPrefix(fmt.Sprintf(WARNING_TAG,path.Base(file),line))
 		logging.NormalLog.Printf(format,v...)
 	}
 }
 
 func (logging *Logging) Error(v ...interface{})  {
 	if(logging.Level <= ERROR){
-		logging.ErrorLog.SetPrefix(ERROR_TAG)
+		_, file, line, _ := runtime.Caller(1)
+		logging.ErrorLog.SetPrefix(fmt.Sprintf(ERROR_TAG,path.Base(file),line))
 		logging.ErrorLog.Println(v...)
 	}
 }
 
 func (logging *Logging) Errorf(format string, v ...interface{})  {
 	if(logging.Level <= ERROR){
-		logging.ErrorLog.SetPrefix(ERROR_TAG)
+		_, file, line, _ := runtime.Caller(1)
+		logging.ErrorLog.SetPrefix(fmt.Sprintf(ERROR_TAG,path.Base(file),line))
 		logging.ErrorLog.Printf(format,v...)
 	}
 }
@@ -147,8 +156,8 @@ func LoadLoggerModule()  {
 		log_file = os.Stdout
 		err_log_file = os.Stderr
 	}
-	normalLog := log.New(log_file,"",log.LstdFlags)
-	errorLog := log.New(err_log_file,"",log.Lshortfile|log.LstdFlags)
+	normalLog := log.New(log_file,"",0)
+	errorLog := log.New(err_log_file,"",0)
 	fatalLog := log.New(err_log_file,"",log.Lshortfile|log.LstdFlags)
 
 	var level LogLevel

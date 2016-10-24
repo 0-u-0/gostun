@@ -14,7 +14,7 @@ type RelayServer struct {
 
 func (s *RelayServer) serve() {
 	for {
-		var buf = make([]byte, 1024)
+		var buf = make([]byte, 2048)
 		size, remoteAddr, err := s.connection.ReadFromUDP(buf)
 		if err != nil {
 			continue
@@ -50,7 +50,7 @@ func (s *RelayServer) handleData(raddr *net.UDPAddr, data []byte) {
 		return
 	}
 
-	fmt.Printf("ffffff request : %s \n",msg)
+	fmt.Printf("relay port %d ---> request : %s \n",s.Port,msg)
 
 }
 

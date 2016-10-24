@@ -13,9 +13,14 @@ type Entry struct {
 
 func LoadEntryModule()  {
 	PrintModuleLoaded("Entry")
+
+	RelayPortPool = NewPortPool(*min_port,*max_port)
+	RelayMap = make(map[string]string)
+
 	entry := NewEntry(3478)
 	entry.Serve()
 }
+
 func (s *Entry) serveUDP() {
 	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(s.Port))
 	if err != nil {
@@ -27,7 +32,7 @@ func (s *Entry) serveUDP() {
 	}
 
 	for {
-		var buf = make([]byte, 1024)
+		var buf = make([]byte, 2048)
 		size, remoteAddr, err := s.udpConn.ReadFromUDP(buf)
 		if err != nil {
 			continue
@@ -61,40 +66,52 @@ func NewEntry(port int) *Entry {
 }
 
 func (entry *Entry) handleData(raddr *net.UDPAddr, data []byte,tcp bool) {
-	msg, err := UnMarshal(data)
-	if err != nil {
-		Log.Warning(err)
-		return
-	}
-
-	Log.Verbosef("msg : %s \n",msg)
-
-	var response []byte
-	var response_err error
-	switch msg.MessageType {
-	case TypeBindingRequest:
-		response,response_err = stunMessageHandle(msg,raddr,false)
-	case TypeAllocate , TypeCreatePermisiion:
-		response,response_err = turnMessageHandle(msg,raddr,false)
-	}
-
-	if response_err == nil{
-		if !tcp {
-			if response != nil {
-				_, err := entry.udpConn.WriteToUDP(response, raddr)
-				if err != nil {
-					Log.Warning(err)
-				}
-			}else {
-				//todo add message type check
-				//Log.Warning("no response.")
-			}
-
-		}else {
-			//todo : add tcp
+	// stun message
+	switch data[0] {
+	case 0x00:
+		msg, err := UnMarshal(data)
+		if err != nil {
+			Log.Warning(err)
+			return
 		}
-	}else{
-		Log.Warningf("response error : %s",response_err)
+
+		var response []byte
+		var response_err error
+		var responseAddress *net.UDPAddr
+		switch msg.MessageType {
+		case TypeBindingRequest:
+			response,response_err = stunMessageHandle(msg,raddr,false)
+		case TypeAllocate , TypeCreatePermisiion ,TypeSendIndication, TypeChannelBinding, TypeRefreshRequest:
+			response,responseAddress,response_err = turnMessageHandle(msg,raddr,false)
+		}
+
+		if response_err == nil{
+			if !tcp {
+				if response != nil {
+					if responseAddress != nil{
+						raddr = responseAddress
+					}
+					_, err := entry.udpConn.WriteToUDP(response, raddr)
+					if err != nil {
+						Log.Warning(err)
+					}
+				}else {
+					//todo add message type check
+					//Log.Warning("no response.")
+				}
+
+			}else {
+				//todo : add tcp
+			}
+		}else{
+			Log.Warningf("response error : %s",response_err)
+		}
+	case 0x40:
+		Log.Info("channelData")
+		//todo : handle channel data
 	}
+
+
+
 
 }

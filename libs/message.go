@@ -62,18 +62,20 @@ func UnMarshal(data []byte) (*Message, error) {
 
 	//if we have leftover data, parse as attributes
 	if length > 20 {
-		msg.Attributes = make([]*Attribute,0)
+		msg.Attributes = make([]*Attribute,0,10)
 		i := 20
 		for i < length {
 			attrType := binary.BigEndian.Uint16(data[i : i+2])
 			attrLength := binary.BigEndian.Uint16(data[i+2 : i+4])
 			i += 4 + int(attrLength)
 
-			msg.Attributes = append(msg.Attributes,newAttr(attrType,data[i-int(attrLength) : i]))
+			attrValue := data[i-int(attrLength) : i]
+			msg.Attributes = append(msg.Attributes,newAttr(attrType,attrValue))
 
 			if pad := int(attrLength) % 4; pad > 0 {
 				i += 4 - pad
 			}
+
 		}
 		//recover here to catch any index errors
 		if recover() != nil {
@@ -86,7 +88,7 @@ func UnMarshal(data []byte) (*Message, error) {
 
 //Marshal transforms a message into a byte array
 func Marshal(m *Message) ([]byte, error) {
-	result := make([]byte, 1024)
+	result := make([]byte, 2048)
 	//first do the header
 	binary.BigEndian.PutUint16(result[:2], m.MessageType)
 	result = append(result[:4], m.TransID...)

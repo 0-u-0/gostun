@@ -3,6 +3,7 @@ package libs
 import (
 	"log"
 	"crypto/rand"
+	mrand "math/rand"
 	"net"
 	"errors"
 	"strings"
@@ -97,3 +98,6 @@ func IsValidIPv4(host string) bool {
 	return true
 }
 
+func RandIntRange(max,min int) int   {
+	return mrand.Intn(max - min) + min
+}

@@ -24,7 +24,6 @@ type Allocate struct {
 	IsExpired bool
 	ConnectTime int
 	ExpiresTicker *time.Ticker
-	Nonce string
 	ClientProtocol uint8
 	ClientAddress *net.UDPAddr
 	RelayAddress *net.UDPAddr
@@ -36,22 +35,19 @@ type Allocate struct {
 }
 
 //todo: init channel and permission
-func NewAllocate(username ,nonce string, protocol uint8, lifetime int,client,relay *net.UDPAddr) *Allocate  {
+func NewAllocate(username string, protocol uint8, lifetime int,client,relay *net.UDPAddr) *Allocate  {
 	allocate := &Allocate{
 		UserName:username,
 		IsExpired:false,
 		ConnectTime:0,
 		ExpiresTime:lifetime,
 		ExpiresTicker:time.NewTicker(1 * time.Second),
-		Nonce:nonce,
 		ClientProtocol:protocol,
 		ClientAddress:client,
 		RelayAddress:relay,
 		ByteRecv:0,
 		ByteSend:0,
 	}
-
-
 
 	return allocate
 }

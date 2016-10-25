@@ -2,15 +2,16 @@ package libs
 
 import (
 	"net"
-	"fmt"
+
 	"strings"
 	"strconv"
 	"encoding/hex"
 	"bytes"
+	"sync"
 )
 
-// client : relay
-var RelayMap map[string]string
+var Allocates map[string]*Allocate
+var Mutex *sync.Mutex
 
 func getClientAddress(m map[string]string,relay string) string {
 	for k,v := range m{
@@ -29,6 +30,7 @@ func messageIntegrityCheck(requestMessage *Message) (err error) {
 		if userAttr != nil {
 			username := string(userAttr.Value)
 			password := hex.EncodeToString(HmacSha1(userAttr.Value,[]byte("passwordkey")))
+
 			//Log.Infof("password %s",password)
 			key := generateKey(username,password,"realm")
 			requestValue , err :=  Marshal(requestMessage,true)
@@ -52,12 +54,29 @@ func messageIntegrityCheck(requestMessage *Message) (err error) {
 	return
 }
 
-func turnMessageHandle(requestMessage *Message,raddr *net.UDPAddr,tcp bool) (response []byte,responseAddress *net.UDPAddr,err error)  {
+func messageIntegrityCalculate(username string,responseMessage *Message) (response []byte, err error) {
+	var m_i_response []byte
+	m_i_response, err = Marshal(responseMessage,false)
+
+	if err != nil {
+		return nil,err
+	}
+
+	password := hex.EncodeToString(HmacSha1([]byte(username),[]byte("passwordkey")))
+
+	key := generateKey(username,password,"realm")
+
+	hmacValue := MessageIntegrityHmac(m_i_response[:len(m_i_response)-24],key)
+
+	response = append(m_i_response[:len(m_i_response)-20],hmacValue...)
+
+	return response,nil
+}
+
+
+func turnMessageHandle(requestMessage *Message,raddr *net.UDPAddr,tcp bool) ([]byte, *net.UDPAddr,error)  {
 	//Log.Verbosef("turn request : %s",message)
 
-	respMsg := new(Message)
-	respMsg.TransID = requestMessage.TransID
-	respMsg.Attributes = make([]*Attribute,0)
 
 	switch requestMessage.MessageType {
 	case TypeAllocate:
@@ -65,6 +84,7 @@ func turnMessageHandle(requestMessage *Message,raddr *net.UDPAddr,tcp bool) (res
 		// check message is auth
 		ok := requestMessage.hasAttribute(AttributeRealm)
 
+		Log.Infof("request : %s",requestMessage)
 		// mi = message integrity
 		if ok {
 			nonce := requestMessage.getAttribute(AttributeNonce)
@@ -76,9 +96,9 @@ func turnMessageHandle(requestMessage *Message,raddr *net.UDPAddr,tcp bool) (res
 					//todo 400 error
 				}else{
 					originUsername := requestMessage.getAttribute(AttributeUsername)
-
-					Log.Info(originUsername.String())
-					originUsernameArray := strings.Split(string(originUsername.Value),":")
+					strUsername := string(originUsername.Value)
+					
+					originUsernameArray := strings.Split(strUsername,":")
 					if len(originUsernameArray) > 1 {
 						accountExpireTime, err := strconv.Atoi(originUsernameArray[0])
 
@@ -86,9 +106,43 @@ func turnMessageHandle(requestMessage *Message,raddr *net.UDPAddr,tcp bool) (res
 							//todo : check accountExpireTime
 							if accountExpireTime > 0 {
 								realUsername := originUsernameArray[1]
-								transport := requestMessage.getAttribute(AttributeRequestedTransport).Value
+								protocol := requestMessage.getAttribute(AttributeRequestedTransport).Value
 
-								Log.Infof("username : %s , len : %d , t %d",realUsername,len(realUsername),transport[0] )
+								// create Allocate
+								//respMsg.MessageType = TypeAllocateResponse
+
+								port := RelayPortPool.RandSelectPort()
+
+								server := NewRelayServer(port)
+								server.Serve()
+								//todo : check relay address is available
+								relayAddress := getRelayAddress()
+
+								relay := new(net.UDPAddr)
+								relay.Port = port
+								relay.IP = net.ParseIP(relayAddress)
+
+								allocate := NewAllocate(realUsername,protocol[0],MaxTimeRefresh,raddr,relay)
+
+								clientAddressString := raddr.String()
+
+								Mutex.Lock()
+								Allocates[clientAddressString] = allocate
+								Mutex.Unlock()
+
+								respMsg := NewResponse(TypeAllocateResponse,requestMessage.TransID,
+									newAttrXORRelayedAddress(relayAddress,port),
+									newAttrXORMappedAddress(raddr),
+									AttrLifetime,
+									AttrSoftware,
+									AttrDummyMessageIntegrity,
+								)
+
+
+								response,err := messageIntegrityCalculate(strUsername,respMsg)
+
+
+								return response,nil,err
 							}
 						}else{
 							//todo : not available username
@@ -102,138 +156,95 @@ func turnMessageHandle(requestMessage *Message,raddr *net.UDPAddr,tcp bool) (res
 			}
 
 
-
-			//
-			//// create Allocate
-			//respMsg.MessageType = TypeAllocateResponse
-			//
-			//port := RelayPortPool.RandSelectPort()
-			//Log.Infof("random port %d",port)
-			//server := NewRelayServer(port)
-			//server.Serve()
-			////todo : check relay address is available
-			//relayAddress := getRelayAddress()
-			//
-			//rKey := fmt.Sprintf("%s:%d",relayAddress,port)
-			//RelayMap[raddr.String()] = rKey
-			//
-			//
-			//
-			//
-			//
-			//
-			//respMsg.addAttribute(newAttrXORRelayedAddress(relayAddress,port))
-			//respMsg.addAttribute(newAttrXORMappedAddress(raddr))
-			//respMsg.addAttribute(newAttrLifetime())
-			//respMsg.addAttribute(newAttrSoftware())
-			//respMsg.addAttribute(newAttrDummyMessageIntegrity())
-			//
-			//var m_i_response []byte
-			//m_i_response, err = Marshal(respMsg)
-			//
-			//if err != nil {
-			//	return
-			//}
-			//
-			//key := generateKey("user","pass","realm")
-			//
-			//hmacValue := MessageIntegrityHmac(m_i_response[:len(m_i_response)-24],key)
-			//
-			//response = append(m_i_response[:len(m_i_response)-20],hmacValue...)
-
-
-
 		}else{
-			respMsg.MessageType = TypeAllocateErrorResponse
+			respMsg := NewResponse(TypeAllocateErrorResponse,requestMessage.TransID,
+				newAttrNonce(),
+				AttrRealm,
+				AttrError401,
+				AttrSoftware,
+			)
 
-			respMsg.addAttribute(newAttrNonce())
-			respMsg.addAttribute(AttrRealm)
-			respMsg.addAttribute(newAttrError401())
-			respMsg.addAttribute(AttrSoftware)
-
-			response, err = Marshal(respMsg,false)
+			response, err := Marshal(respMsg,false)
 
 			if err != nil {
-				return
+				return nil,nil,err
 			}
+			return response,nil,nil
 		}
 	case TypeCreatePermisiion:
 		Log.Info(" permission \n")
 
-		respMsg.MessageType = TypeCreatePermisiionResponse
-		respMsg.addAttribute(AttrSoftware)
-		respMsg.addAttribute(newAttrDummyMessageIntegrity())
 
-		var m_i_response []byte
-		m_i_response, err = Marshal(respMsg,false)
+		//todo : check
+		respMsg := NewResponse(TypeCreatePermisiionResponse,requestMessage.TransID,
+			AttrSoftware,
+			AttrDummyMessageIntegrity,
+		)
 
-		if err != nil {
-			return
-		}
+		originUsername := requestMessage.getAttribute(AttributeUsername)
+		strUsername := string(originUsername.Value)
 
-		key := generateKey("user","pass","realm")
 
-		hmacValue := MessageIntegrityHmac(m_i_response[:len(m_i_response)-24],key)
-
-		response = append(m_i_response[:len(m_i_response)-20],hmacValue...)
+		response ,err := messageIntegrityCalculate(strUsername,respMsg)
+		return response,nil,err
 	case TypeSendIndication:
 		Log.Info(" indication \n")
 
-		peerAddress := requestMessage.getAttribute(AttributeXorPeerAddress)
+		//peerAddress := requestMessage.getAttribute(AttributeXorPeerAddress)
+		//
+		//if peerAddress != nil{
+		//	port,address := unXorAddress(peerAddress.Value)
+		//
+		//
+		//	saddr := fmt.Sprintf("%s:%d",net.IP(address),port)
+		//	caddr := strings.Split(getClientAddress(RelayMap,saddr),":")
+		//	Log.Infof("client : %s ,relay local : %s",saddr,port,caddr)
+		//	responseAddress = new(net.UDPAddr)
+		//	responseAddress.IP =  net.ParseIP(caddr[0]).To4()
+		//	responseAddress.Port,_ = strconv.Atoi(caddr[1])
+		//
+		//
+		//	relayAddress := RelayMap[raddr.String()]
+		//
+		//	peerPortStr := strings.Split(relayAddress,":")[1]
+		//	pAddress := strings.Split(relayAddress,":")[0]
+		//	peerPort , _ := strconv.Atoi(peerPortStr)
+		//	respMsg.MessageType = TypeDataIndication
+		//	respMsg.addAttribute(requestMessage.getAttribute(AttributeData))
+		//	respMsg.addAttribute(newAttrXORPeerAddress(pAddress,peerPort))
+		//	respMsg.addAttribute(AttrSoftware)
+		//
+		//	response, err = Marshal(respMsg,false)
+		//
+		//	if err != nil {
+		//		return
+		//	}
+		//}else{
+		//	//todo : error
+		//}
 
-		if peerAddress != nil{
-			port,address := unXorAddress(peerAddress.Value)
 
-
-			saddr := fmt.Sprintf("%s:%d",net.IP(address),port)
-			caddr := strings.Split(getClientAddress(RelayMap,saddr),":")
-			Log.Infof("client : %s ,relay local : %s",saddr,port,caddr)
-			responseAddress = new(net.UDPAddr)
-			responseAddress.IP =  net.ParseIP(caddr[0]).To4()
-			responseAddress.Port,_ = strconv.Atoi(caddr[1])
-
-
-			relayAddress := RelayMap[raddr.String()]
-
-			peerPortStr := strings.Split(relayAddress,":")[1]
-			pAddress := strings.Split(relayAddress,":")[0]
-			peerPort , _ := strconv.Atoi(peerPortStr)
-			respMsg.MessageType = TypeDataIndication
-			respMsg.addAttribute(requestMessage.getAttribute(AttributeData))
-			respMsg.addAttribute(newAttrXORPeerAddress(pAddress,peerPort))
-			respMsg.addAttribute(AttrSoftware)
-
-			response, err = Marshal(respMsg,false)
-
-			if err != nil {
-				return
-			}
-		}else{
-			//todo : error
-		}
-		//respMsg.MessageType = TypeDataIndication
-		//respMsg.addAttribute()
 	case TypeChannelBinding:
-		respMsg.MessageType = TypeChannelBindingResponse
-		respMsg.addAttribute(AttrSoftware)
-		respMsg.addAttribute(newAttrDummyMessageIntegrity())
-
-		var m_i_response []byte
-		m_i_response, err = Marshal(respMsg,false)
-
-		if err != nil {
-			return
-		}
-
-		key := generateKey("user","pass","realm")
-
-		hmacValue := MessageIntegrityHmac(m_i_response[:len(m_i_response)-24],key)
-
-		response = append(m_i_response[:len(m_i_response)-20],hmacValue...)
+		//respMsg.MessageType = TypeChannelBindingResponse
+		//respMsg.addAttribute(AttrSoftware)
+		//respMsg.addAttribute(newAttrDummyMessageIntegrity())
+		//
+		//var m_i_response []byte
+		//m_i_response, err = Marshal(respMsg,false)
+		//
+		//if err != nil {
+		//	return
+		//}
+		//
+		//key := generateKey("user","pass","realm")
+		//
+		//hmacValue := MessageIntegrityHmac(m_i_response[:len(m_i_response)-24],key)
+		//
+		//response = append(m_i_response[:len(m_i_response)-20],hmacValue...)
 	case TypeRefreshRequest:
 		//todo : ....
+
 	}
 
-
-	return
+	return nil,nil,nil
 }

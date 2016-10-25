@@ -141,6 +141,19 @@ func (m Message) getAttribute(attrType uint16) *Attribute  {
 	return nil
 }
 
+func NewResponse(respType uint16,transId []byte,attrs ...*Attribute) *Message {
+	respMsg := new(Message)
+	respMsg.TransID = transId
+	respMsg.MessageType = respType
+	respMsg.Attributes = make([]*Attribute,0)
+
+	for _,v := range attrs{
+		respMsg.addAttribute(v)
+	}
+
+	return respMsg
+}
+
 
 
 func (m Message) TypeToString() (typeString string)  {

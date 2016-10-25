@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"sync"
 )
 
 type Entry struct {
@@ -15,7 +16,8 @@ func LoadEntryModule()  {
 	PrintModuleLoaded("Entry")
 
 	RelayPortPool = NewPortPool(*min_port,*max_port)
-	RelayMap = make(map[string]string)
+	Allocates = make(map[string]*Allocate)
+	Mutex = new(sync.Mutex)
 
 	entry := NewEntry(3478)
 	entry.Serve()
@@ -111,8 +113,4 @@ func (entry *Entry) handleData(raddr *net.UDPAddr, data []byte,tcp bool) {
 		Log.Info("channelData")
 		//todo : handle channel data
 	}
-
-
-
-
 }

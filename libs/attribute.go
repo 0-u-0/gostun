@@ -18,6 +18,9 @@ type Attribute struct{
 var (
 	AttrSoftware = newAttr(AttributeSoftware,[]byte("Example server, version 1.17"))
 	AttrRealm = newAttr(AttributeRealm,[]byte("realm"))
+	AttrError401 = newAttrError401()
+	AttrLifetime = newAttrLifetime()
+	AttrDummyMessageIntegrity = newAttrNoValue(AttributeMessageIntegrity)
 )
 
 func xorAddress(port uint16, addr []byte) []byte {
@@ -163,10 +166,7 @@ func newAttrMessageIntegrity(value []byte) *Attribute {
 		AttributeMessageIntegrity,value)
 }
 
-func newAttrDummyMessageIntegrity() *Attribute {
-	return newAttrNoValue(
-		AttributeMessageIntegrity)
-}
+
 
 // message-integrity
 func generateKey(username,password,realm string) []byte  {

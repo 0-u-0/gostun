@@ -8,9 +8,16 @@ import (
 	"errors"
 	"strings"
 	"strconv"
+	"crypto/hmac"
+	"crypto/sha1"
 )
 
-var counter uint32
+func HmacSha1(value,key []byte) []byte {
+	hasher := hmac.New(sha1.New,key)
+	hasher.Write(value)
+	digest := hasher.Sum(nil)
+	return digest
+}
 
 
 func RandBytes(length int) (r []byte) {
@@ -26,8 +33,6 @@ func RandBytes(length int) (r []byte) {
 	}
 	return
 }
-
-
 
 func PrintModuleLoaded(moduleName string)  {
 	log.Printf("< %s > module loads successfully",moduleName)

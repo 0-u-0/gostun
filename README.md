@@ -43,3 +43,10 @@ Test
 ------
 
 - [ ] STUN Public Test
+
+
+Expire
+---------
+
+- Nonce : 20 min
+- Allocate : min : 5 min , max : 10 min

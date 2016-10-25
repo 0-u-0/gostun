@@ -78,6 +78,7 @@ func (entry *Entry) handleData(raddr *net.UDPAddr, data []byte,tcp bool) {
 		var response []byte
 		var response_err error
 		var responseAddress *net.UDPAddr
+
 		switch msg.MessageType {
 		case TypeBindingRequest:
 			response,response_err = stunMessageHandle(msg,raddr,false)
@@ -97,7 +98,7 @@ func (entry *Entry) handleData(raddr *net.UDPAddr, data []byte,tcp bool) {
 					}
 				}else {
 					//todo add message type check
-					//Log.Warning("no response.")
+					Log.Warning("no response.")
 				}
 
 			}else {

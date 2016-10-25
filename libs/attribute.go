@@ -5,9 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"crypto/md5"
-	"crypto/sha1"
-	"crypto/hmac"
 	"time"
+	"encoding/hex"
 )
 
 type Attribute struct{
@@ -16,6 +15,10 @@ type Attribute struct{
 	Value []byte
 }
 
+var (
+	AttrSoftware = newAttr(AttributeSoftware,[]byte("Example server, version 1.17"))
+	AttrRealm = newAttr(AttributeRealm,[]byte("realm"))
+)
 
 func xorAddress(port uint16, addr []byte) []byte {
 
@@ -48,7 +51,7 @@ func newAttr(attrType uint16,value []byte) *Attribute {
 	att := new(Attribute)
 	att.AttrType = attrType
 	att.Length = uint16(len(value))
-	att.Value = padding(value)
+	att.Value = value
 	return att
 }
 
@@ -79,24 +82,27 @@ func newAttrXORMappedAddress(remoteAddress *net.UDPAddr) *Attribute  {
 }
 
 func newAttrNonce() *Attribute{
-	timestampBytes := make([]byte, 8)
-	timestamp := time.Now().Unix()
-	binary.BigEndian.PutUint64(timestampBytes, uint64(timestamp^magicCookie))
-	return newAttr(AttributeNonce,timestampBytes)
+	//fixme : 20 min expire
+	timestampBytes := make([]byte, 4)
+	timestamp := time.Now().Unix() + 20*60
+	binary.BigEndian.PutUint32(timestampBytes, uint32(timestamp^magicCookie))
+	nonce := hex.EncodeToString(timestampBytes)
+	return newAttr(AttributeNonce,[]byte(nonce))
 }
 
-func validNonce(nonce []byte) bool {
-	var timeout uint64 = 1200
-	originNonce := binary.BigEndian.Uint64(nonce)^magicCookie
+func validNonce(nonce []byte) bool{
+	step1,err  :=  hex.DecodeString(string(nonce))
 
-	if  originNonce + timeout > uint64(time.Now().Unix()){
-		return true
+	if err != nil {
+		return  false
 	}
-	return false
-}
+	timestamp := binary.BigEndian.Uint32(step1)^magicCookie
 
-func newAttrRealm() *Attribute{
-	return newAttr(AttributeRealm,[]byte("realm"))
+	if timestamp > uint32(time.Now().Unix()){
+		return true
+	}else{
+		return false
+	}
 }
 
 func newAttrError401() *Attribute{
@@ -145,9 +151,6 @@ func newAttrXORPeerAddress(peer string, pport int) *Attribute {
 	return newAttr(AttributeXorPeerAddress,value)
 }
 
-func newAttrSoftware() *Attribute{
-	return newAttr(AttributeSoftware,[]byte("Example server, version 1.17"))
-}
 
 func newAttrLifetime() *Attribute {
 	time := make([]byte,4)
@@ -174,10 +177,7 @@ func generateKey(username,password,realm string) []byte  {
 }
 
 func MessageIntegrityHmac(value,key []byte) []byte {
-	hasher := hmac.New(sha1.New,key)
-	hasher.Write(value)
-	digest := hasher.Sum(nil)
-	return digest
+	return HmacSha1(value,key)
 }
 
 

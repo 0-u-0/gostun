@@ -3,7 +3,6 @@ package libs
 import (
 	"net"
 	"time"
-	"fmt"
 )
 
 
@@ -13,7 +12,7 @@ const (
 )
 
 const (
-	ClientProtocolUDP = 0
+	ClientProtocolUDP = 17
 	ClientProtocolTCP
 	ClientProtocolTCPTLS
 )
@@ -26,15 +25,18 @@ type Allocate struct {
 	ConnectTime int
 	ExpiresTicker *time.Ticker
 	Nonce string
-	ClientProtocol int
+	ClientProtocol uint8
 	ClientAddress *net.UDPAddr
 	RelayAddress *net.UDPAddr
 	PeerRelayAddress *net.UDPAddr
 	ByteSend int
 	ByteRecv int
+	Channels []Channel
+	Permissions []Permission
 }
 
-func NewAllocate(username ,nonce string, protocol, lifetime int,client,relay *net.UDPAddr) *Allocate  {
+//todo: init channel and permission
+func NewAllocate(username ,nonce string, protocol uint8, lifetime int,client,relay *net.UDPAddr) *Allocate  {
 	allocate := &Allocate{
 		UserName:username,
 		IsExpired:false,
@@ -49,19 +51,22 @@ func NewAllocate(username ,nonce string, protocol, lifetime int,client,relay *ne
 		ByteSend:0,
 	}
 
-	go func() {
-		for range allocate.ExpiresTicker.C {
-			allocate.ConnectTime++;
-			allocate.ExpiresTime--;
-			if allocate.ExpiresTime <= 0 {
 
-				break
-			}
-
-		}
-	}()
 
 	return allocate
+}
+
+func (a *Allocate)TimerRun()  {
+	go func() {
+		for range a.ExpiresTicker.C {
+			a.ConnectTime++;
+			a.ExpiresTime--;
+			if a.ExpiresTime <= 0 {
+				a.IsExpired = true
+				break
+			}
+		}
+	}()
 }
 
 func (a *Allocate)Refresh(time int)  {

@@ -18,7 +18,7 @@ func stunMessageHandle(message *Message,raddr *net.UDPAddr,tcp bool) (response [
 
 		respMsg.addAttribute(newAttrXORMappedAddress(raddr))
 
-		response, err = Marshal(respMsg)
+		response, err = Marshal(respMsg,false)
 
 		if err != nil {
 			return

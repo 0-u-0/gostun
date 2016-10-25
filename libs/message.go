@@ -57,7 +57,6 @@ func UnMarshal(data []byte) (*Message, error) {
 	msg.MessageType = pkgType
 	msg.MessageLength = binary.BigEndian.Uint16(data[2:4])
 
-
 	msg.TransID = data[4:20]
 
 	//if we have leftover data, parse as attributes
@@ -75,19 +74,17 @@ func UnMarshal(data []byte) (*Message, error) {
 			if pad := int(attrLength) % 4; pad > 0 {
 				i += 4 - pad
 			}
-
 		}
 		//recover here to catch any index errors
 		if recover() != nil {
 			return nil, ErrInvalidRequest
 		}
 	}
-
 	return msg, nil
 }
 
 //Marshal transforms a message into a byte array
-func Marshal(m *Message) ([]byte, error) {
+func Marshal(m *Message,untilMessageIntegrity bool) ([]byte, error) {
 	result := make([]byte, 2048)
 	//first do the header
 	binary.BigEndian.PutUint16(result[:2], m.MessageType)
@@ -99,7 +96,16 @@ func Marshal(m *Message) ([]byte, error) {
 		for _ , attr := range m.Attributes {
 			binary.BigEndian.PutUint16(result[i:i+2], attr.AttrType)
 			binary.BigEndian.PutUint16(result[i+2:i+4], attr.Length)
+
+			if untilMessageIntegrity {
+				if attr.AttrType == AttributeMessageIntegrity {
+					i += 4 + int(attr.Length)
+					break
+				}
+			}
+
 			result = append(result[:i+4], attr.Value...)
+
 			i += 4 + int(attr.Length)
 			//if we need to pad, do so
 			if pad := int(attr.Length % 4); pad > 0 {
@@ -113,6 +119,7 @@ func Marshal(m *Message) ([]byte, error) {
 	}
 	return result, nil
 }
+
 
 
 

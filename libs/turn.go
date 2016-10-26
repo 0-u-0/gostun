@@ -77,7 +77,6 @@ func messageIntegrityCalculate(username string,responseMessage *Message) (respon
 func turnMessageHandle(requestMessage *Message,raddr *net.UDPAddr,tcp bool) ([]byte, *net.UDPAddr,error)  {
 	//Log.Verbosef("turn request : %s",message)
 
-
 	switch requestMessage.MessageType {
 	case TypeAllocate:
 
@@ -122,7 +121,7 @@ func turnMessageHandle(requestMessage *Message,raddr *net.UDPAddr,tcp bool) ([]b
 								relay.Port = port
 								relay.IP = net.ParseIP(relayAddress)
 
-								allocate := NewAllocate(realUsername,protocol[0],MaxTimeRefresh,raddr,relay)
+								allocate := NewAllocate(realUsername,protocol[0],MaxTimeRefresh,raddr,relay,server)
 
 								clientAddressString := raddr.String()
 
@@ -184,11 +183,43 @@ func turnMessageHandle(requestMessage *Message,raddr *net.UDPAddr,tcp bool) ([]b
 		originUsername := requestMessage.getAttribute(AttributeUsername)
 		strUsername := string(originUsername.Value)
 
-
 		response ,err := messageIntegrityCalculate(strUsername,respMsg)
 		return response,nil,err
+
 	case TypeSendIndication:
 		Log.Info(" indication \n")
+
+		clientAddressString := raddr.String()
+
+		allocate := Allocates[clientAddressString];
+
+		if allocate != nil{
+
+			if allocate.PeerRelayAddress == nil {
+				peerAddress := requestMessage.getAttribute(AttributeXorPeerAddress)
+				if peerAddress != nil {
+					port, address := unXorAddress(peerAddress.Value)
+
+					relay := new(net.UDPAddr)
+					relay.Port = int(port)
+					relay.IP = net.ParseIP(string(address)).To4()
+
+					allocate.PeerRelayAddress = relay
+
+					if allocate.RelayServer != nil {
+						allocate.RelayServer.RelayAddress = relay
+					}
+				}else{
+					//todo : error
+				}
+			}
+
+
+
+		}else{
+			//todo : error
+		}
+
 
 		//peerAddress := requestMessage.getAttribute(AttributeXorPeerAddress)
 		//

@@ -10,6 +10,7 @@ import (
 type RelayServer struct {
 	Port       int
 	connection *net.UDPConn
+	RelayAddress *net.UDPAddr
 }
 
 func (s *RelayServer) serve() {

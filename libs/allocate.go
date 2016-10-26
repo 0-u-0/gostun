@@ -27,6 +27,7 @@ type Allocate struct {
 	ClientProtocol uint8
 	ClientAddress *net.UDPAddr
 	RelayAddress *net.UDPAddr
+	RelayServer *RelayServer
 	PeerRelayAddress *net.UDPAddr
 	ByteSend int
 	ByteRecv int
@@ -35,7 +36,7 @@ type Allocate struct {
 }
 
 //todo: init channel and permission
-func NewAllocate(username string, protocol uint8, lifetime int,client,relay *net.UDPAddr) *Allocate  {
+func NewAllocate(username string, protocol uint8, lifetime int,client,relay *net.UDPAddr,relayServer *RelayServer) *Allocate  {
 	allocate := &Allocate{
 		UserName:username,
 		IsExpired:false,
@@ -45,6 +46,7 @@ func NewAllocate(username string, protocol uint8, lifetime int,client,relay *net
 		ClientProtocol:protocol,
 		ClientAddress:client,
 		RelayAddress:relay,
+		RelayServer:relayServer,
 		ByteRecv:0,
 		ByteSend:0,
 	}
